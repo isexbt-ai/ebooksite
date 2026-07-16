@@ -34,6 +34,7 @@ def make_app():
         'debug': CONF.get('debug', False),
         'static_path': os.path.join(BASE_DIR, 'app', '.output', 'public'),
         'template_path': os.path.join(BASE_DIR, 'webserver', 'templates'),
+        'xsrf_cookies': False,  # 禁用 CSRF，因为使用 API token 认证
     }
 
     return tornado.web.Application(routes, **settings)

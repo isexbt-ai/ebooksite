@@ -2,6 +2,41 @@
 const { t } = useI18n()
 const authStore = useAuthStore()
 
+// 下载对话框
+const showDownloadDialog = ref(false)
+const selectedBook = ref<any>(null)
+const downloading = ref(false)
+
+// 打开下载对话框
+const openDownloadDialog = (book: any) => {
+  selectedBook.value = book
+  showDownloadDialog.value = true
+}
+
+// 下载书籍
+const downloadBook = async () => {
+  if (!selectedBook.value) return
+
+  downloading.value = true
+  try {
+    const { post } = useApi()
+    await post('/api/download', {
+      title: selectedBook.value.title,
+      author: selectedBook.value.author,
+      download_url: selectedBook.value.download_url,
+      source_id: selectedBook.value.source_id,
+    })
+    showDownloadDialog.value = false
+    selectedBook.value = null
+    alert('下载任务已提交')
+  } catch (err: any) {
+    console.error('下载失败:', err)
+    alert('下载失败: ' + (err.message || '未知错误'))
+  } finally {
+    downloading.value = false
+  }
+}
+
 // 书籍列表
 const books = ref([])
 const loading = ref(false)
@@ -123,6 +158,16 @@ onMounted(() => {
                   icon
                   size="small"
                   variant="text"
+                  color="success"
+                  @click="openDownloadDialog(item)"
+                >
+                  <v-icon>mdi-download</v-icon>
+                </v-btn>
+
+                <v-btn
+                  icon
+                  size="small"
+                  variant="text"
                   color="error"
                   @click="deleteBook(item.id)"
                 >
@@ -134,5 +179,29 @@ onMounted(() => {
         </v-card>
       </v-col>
     </v-row>
+
+    <!-- 下载对话框 -->
+    <v-dialog v-model="showDownloadDialog" max-width="400">
+      <v-card>
+        <v-card-title>下载书籍</v-card-title>
+        <v-card-text>
+          <p v-if="selectedBook">
+            确认下载 <strong>{{ selectedBook.title }}</strong>？
+          </p>
+        </v-card-text>
+        <v-card-actions>
+          <v-btn
+            color="primary"
+            :loading="downloading"
+            :disabled="downloading"
+            @click="downloadBook"
+          >
+            <v-icon left>mdi-download</v-icon>
+            确认下载
+          </v-btn>
+          <v-btn @click="showDownloadDialog = false">取消</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>

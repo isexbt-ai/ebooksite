@@ -142,6 +142,43 @@ def init_database():
         )
     """)
 
+    # 批量下载任务表
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS download_tasks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            source_id INTEGER NOT NULL,
+            source_name VARCHAR(100),
+            status VARCHAR(20) DEFAULT 'pending',
+            total_count INTEGER DEFAULT 0,
+            done_count INTEGER DEFAULT 0,
+            failed_count INTEGER DEFAULT 0,
+            skip_count INTEGER DEFAULT 0,
+            current_category VARCHAR(200),
+            current_page INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            completed_at DATETIME,
+            FOREIGN KEY (source_id) REFERENCES book_sources(id)
+        )
+    """)
+
+    # 批量下载任务项表
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS download_task_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            task_id INTEGER NOT NULL,
+            category VARCHAR(200),
+            book_title VARCHAR(500),
+            book_author VARCHAR(200),
+            source_url TEXT,
+            status VARCHAR(20) DEFAULT 'pending',
+            file_path TEXT,
+            error TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            completed_at DATETIME,
+            FOREIGN KEY (task_id) REFERENCES download_tasks(id)
+        )
+    """)
+
     # 创建默认管理员账号
     create_default_admin()
 
@@ -647,6 +684,255 @@ class DownloadLog:
             'status': self.status,
             'file_path': self.file_path,
             'file_size': self.file_size,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'completed_at': self.completed_at.isoformat() if self.completed_at else None,
+        }
+
+
+class DownloadTask:
+    """批量下载任务模型"""
+
+    def __init__(self, row: Optional[sqlite3.Row] = None):
+        if row:
+            self.id = row['id']
+            self.source_id = row['source_id']
+            self.source_name = row['source_name']
+            self.status = row['status']
+            self.total_count = row['total_count']
+            self.done_count = row['done_count']
+            self.failed_count = row['failed_count']
+            self.skip_count = row['skip_count']
+            self.current_category = row['current_category']
+            self.current_page = row['current_page']
+
+            created = row['created_at']
+            if created and isinstance(created, str):
+                try:
+                    self.created_at = datetime.fromisoformat(created)
+                except ValueError:
+                    self.created_at = None
+            else:
+                self.created_at = created
+
+            completed = row['completed_at']
+            if completed and isinstance(completed, str):
+                try:
+                    self.completed_at = datetime.fromisoformat(completed)
+                except ValueError:
+                    self.completed_at = None
+            else:
+                self.completed_at = completed
+        else:
+            self.id = None
+            self.source_id = 0
+            self.source_name = ''
+            self.status = 'pending'
+            self.total_count = 0
+            self.done_count = 0
+            self.failed_count = 0
+            self.skip_count = 0
+            self.current_category = None
+            self.current_page = 0
+            self.created_at = None
+            self.completed_at = None
+
+    @classmethod
+    def create(cls, source_id: int, source_name: str = '') -> 'DownloadTask':
+        """创建下载任务"""
+        db = Database()
+        cursor = db.execute(
+            """INSERT INTO download_tasks (source_id, source_name, status)
+               VALUES (?, ?, 'pending')""",
+            (source_id, source_name)
+        )
+        return cls.get_by_id(cursor.lastrowid)
+
+    @classmethod
+    def get_by_id(cls, task_id: int) -> Optional['DownloadTask']:
+        """根据 ID 获取任务"""
+        db = Database()
+        row = db.fetchone("SELECT * FROM download_tasks WHERE id = ?", (task_id,))
+        return cls(row) if row else None
+
+    @classmethod
+    def get_all(cls, limit: int = 50) -> List['DownloadTask']:
+        """获取所有任务"""
+        db = Database()
+        rows = db.fetchall(
+            "SELECT * FROM download_tasks ORDER BY created_at DESC LIMIT ?",
+            (limit,)
+        )
+        return [cls(row) for row in rows]
+
+    def update_status(self, status: str):
+        """更新任务状态"""
+        db = Database()
+        if status in ('completed', 'failed', 'stopped'):
+            db.execute(
+                "UPDATE download_tasks SET status = ?, completed_at = CURRENT_TIMESTAMP WHERE id = ?",
+                (status, self.id)
+            )
+        else:
+            db.execute(
+                "UPDATE download_tasks SET status = ? WHERE id = ?",
+                (status, self.id)
+            )
+        self.status = status
+
+    def update_progress(self, **kwargs):
+        """更新任务进度"""
+        db = Database()
+        allowed = ['total_count', 'done_count', 'failed_count', 'skip_count', 'current_category', 'current_page']
+        updates = []
+        params = []
+        for key, value in kwargs.items():
+            if key in allowed:
+                updates.append(f"{key} = ?")
+                params.append(value)
+        if updates:
+            params.append(self.id)
+            db.execute(
+                f"UPDATE download_tasks SET {', '.join(updates)} WHERE id = ?",
+                params
+            )
+            for key, value in kwargs.items():
+                setattr(self, key, value)
+
+    def to_dict(self) -> Dict[str, Any]:
+        """转换为字典"""
+        return {
+            'id': self.id,
+            'source_id': self.source_id,
+            'source_name': self.source_name,
+            'status': self.status,
+            'total_count': self.total_count,
+            'done_count': self.done_count,
+            'failed_count': self.failed_count,
+            'skip_count': self.skip_count,
+            'current_category': self.current_category,
+            'current_page': self.current_page,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'completed_at': self.completed_at.isoformat() if self.completed_at else None,
+        }
+
+
+class DownloadTaskItem:
+    """批量下载任务项模型"""
+
+    def __init__(self, row: Optional[sqlite3.Row] = None):
+        if row:
+            self.id = row['id']
+            self.task_id = row['task_id']
+            self.category = row['category']
+            self.book_title = row['book_title']
+            self.book_author = row['book_author']
+            self.source_url = row['source_url']
+            self.status = row['status']
+            self.file_path = row['file_path']
+            self.error = row['error']
+
+            created = row['created_at']
+            if created and isinstance(created, str):
+                try:
+                    self.created_at = datetime.fromisoformat(created)
+                except ValueError:
+                    self.created_at = None
+            else:
+                self.created_at = created
+
+            completed = row['completed_at']
+            if completed and isinstance(completed, str):
+                try:
+                    self.completed_at = datetime.fromisoformat(completed)
+                except ValueError:
+                    self.completed_at = None
+            else:
+                self.completed_at = completed
+        else:
+            self.id = None
+            self.task_id = 0
+            self.category = ''
+            self.book_title = ''
+            self.book_author = ''
+            self.source_url = ''
+            self.status = 'pending'
+            self.file_path = ''
+            self.error = ''
+            self.created_at = None
+            self.completed_at = None
+
+    @classmethod
+    def create(cls, task_id: int, category: str, book_title: str, book_author: str,
+               source_url: str = '') -> 'DownloadTaskItem':
+        """创建下载任务项"""
+        db = Database()
+        cursor = db.execute(
+            """INSERT INTO download_task_items (task_id, category, book_title, book_author, source_url)
+               VALUES (?, ?, ?, ?, ?)""",
+            (task_id, category, book_title, book_author, source_url)
+        )
+        return cls.get_by_id(cursor.lastrowid)
+
+    @classmethod
+    def get_by_id(cls, item_id: int) -> Optional['DownloadTaskItem']:
+        """根据 ID 获取任务项"""
+        db = Database()
+        row = db.fetchone("SELECT * FROM download_task_items WHERE id = ?", (item_id,))
+        return cls(row) if row else None
+
+    @classmethod
+    def get_by_task(cls, task_id: int) -> List['DownloadTaskItem']:
+        """获取任务的所有项目"""
+        db = Database()
+        rows = db.fetchall(
+            "SELECT * FROM download_task_items WHERE task_id = ? ORDER BY id",
+            (task_id,)
+        )
+        return [cls(row) for row in rows]
+
+    @classmethod
+    def get_by_task_and_status(cls, task_id: int, status: str) -> List['DownloadTaskItem']:
+        """获取指定状态的任务项"""
+        db = Database()
+        rows = db.fetchall(
+            "SELECT * FROM download_task_items WHERE task_id = ? AND status = ? ORDER BY id",
+            (task_id, status)
+        )
+        return [cls(row) for row in rows]
+
+    def update_status(self, status: str, file_path: str = None, error: str = None):
+        """更新任务项状态"""
+        db = Database()
+        if status in ('completed', 'failed', 'skipped'):
+            db.execute(
+                """UPDATE download_task_items
+                   SET status = ?, file_path = ?, error = ?, completed_at = CURRENT_TIMESTAMP
+                   WHERE id = ?""",
+                (status, file_path, error, self.id)
+            )
+        else:
+            db.execute(
+                "UPDATE download_task_items SET status = ? WHERE id = ?",
+                (status, self.id)
+            )
+        self.status = status
+        if file_path:
+            self.file_path = file_path
+        if error:
+            self.error = error
+
+    def to_dict(self) -> Dict[str, Any]:
+        """转换为字典"""
+        return {
+            'id': self.id,
+            'task_id': self.task_id,
+            'category': self.category,
+            'book_title': self.book_title,
+            'book_author': self.book_author,
+            'source_url': self.source_url,
+            'status': self.status,
+            'file_path': self.file_path,
+            'error': self.error,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'completed_at': self.completed_at.isoformat() if self.completed_at else None,
         }

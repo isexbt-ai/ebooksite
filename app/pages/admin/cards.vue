@@ -1,4 +1,8 @@
 <script setup lang="ts">
+definePageMeta({
+  middleware: ['admin-auth'],
+})
+
 const { t } = useI18n()
 const authStore = useAuthStore()
 
@@ -67,6 +71,19 @@ onMounted(() => {
 
 <template>
   <v-container fluid>
+    <v-row>
+      <v-col cols="12">
+        <v-btn
+          to="/admin"
+          variant="text"
+          prepend-icon="mdi-arrow-left"
+          class="mb-4"
+        >
+          返回后台
+        </v-btn>
+      </v-col>
+    </v-row>
+
     <v-row>
       <!-- 生成卡密 -->
       <v-col cols="12" md="6">

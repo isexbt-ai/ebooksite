@@ -17,6 +17,15 @@ logger = logging.getLogger(__name__)
 class BaseHandler(tornado.web.RequestHandler):
     """基础 Handler"""
 
+    def set_default_headers(self):
+        """设置默认安全响应头"""
+        self.set_header("X-Frame-Options", "DENY")
+        self.set_header("X-Content-Type-Options", "nosniff")
+        self.set_header("X-XSS-Protection", "1; mode=block")
+        self.set_header("Referrer-Policy", "strict-origin-when-cross-origin")
+        self.set_header("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self';")
+        self.set_header("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+
     def prepare(self):
         """请求预处理"""
         pass
@@ -41,7 +50,8 @@ class BaseHandler(tornado.web.RequestHandler):
             return result
 
     def get_current_user(self) -> Optional[User]:
-        """获取当前登录用户"""
+        """获取当前登录用户 - 支持 cookie 和 Authorization header"""
+        # 1. 先尝试从 secure_cookie 获取
         user_id = self.get_secure_cookie("user_id")
         if user_id:
             try:
@@ -50,11 +60,23 @@ class BaseHandler(tornado.web.RequestHandler):
                     return user
             except (ValueError, TypeError):
                 pass
+
+        # 2. 尝试从 Authorization header 获取 (Bearer token)
+        auth_header = self.request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            token = auth_header[7:].strip()
+            try:
+                user = User.get_by_id(int(token))
+                if user and user.active:
+                    return user
+            except (ValueError, TypeError):
+                pass
+
         return None
 
     def set_current_user(self, user_id: int):
         """设置当前用户"""
-        self.set_secure_cookie("user_id", str(user_id))
+        self.set_secure_cookie("user_id", str(user_id), expires_days=7)
 
     def clear_current_user(self):
         """清除当前用户"""

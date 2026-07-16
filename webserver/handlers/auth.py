@@ -111,7 +111,8 @@ class LoginHandler(BaseHandler):
                 "username": user.username,
                 "name": user.name,
                 "admin": user.admin,
-                "expiry_date": user.expiry_date.isoformat() if user.expiry_date else None
+                "expiry_date": user.expiry_date.isoformat() if user.expiry_date else None,
+                "token": str(user.id),  # 用于前端 Authorization header
             })
 
         except Exception as e:

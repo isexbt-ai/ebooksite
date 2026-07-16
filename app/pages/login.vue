@@ -27,6 +27,12 @@ const login = async () => {
       authStore.setUser(data.data)
       authStore.setToken(data.data.token || '')
 
+      // 持久化存储
+      localStorage.setItem('auth_store', JSON.stringify({
+        user: data.data,
+        token: data.data.token || ''
+      }))
+
       // 根据角色跳转
       if (data.data.admin) {
         navigateTo('/admin')

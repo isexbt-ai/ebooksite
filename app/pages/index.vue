@@ -32,6 +32,8 @@ const openBuyLink = () => {
 }
 
 onMounted(() => {
+  // 刷新用户信息以保持登录状态
+  authStore.fetchUser()
   fetchBuyLink()
 })
 </script>

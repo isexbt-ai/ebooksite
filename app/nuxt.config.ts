@@ -3,6 +3,27 @@ export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
   devtools: { enabled: true },
 
+  // SSR 配置
+  ssr: true,
+
+  // Nitro 配置 - 预渲染静态页面
+  nitro: {
+    devProxy: {
+      '/api': {
+        target: 'http://127.0.0.1:8080/api',
+        changeOrigin: true,
+      },
+    },
+    // 预渲染关键页面
+    prerender: {
+      routes: ['/', '/login', '/register'],
+    },
+    // 启用 gzip 压缩
+    compressPublicAssets: {
+      gzip: true,
+    },
+  },
+
   // 模块
   modules: [
     'vuetify-nuxt-module',
@@ -66,15 +87,5 @@ export default defineNuxtConfig({
   // 开发服务器
   devServer: {
     port: 3000,
-  },
-
-  // Nitro 配置 - 开发环境代理API到后端
-  nitro: {
-    devProxy: {
-      '/api': {
-        target: 'http://127.0.0.1:8080/api',
-        changeOrigin: true,
-      },
-    },
   },
 })

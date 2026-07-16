@@ -7,14 +7,46 @@
 import logging
 import os
 import json
-import aiohttp
+import zipfile
+import tarfile
+import shutil
 from datetime import datetime
 
 from webserver.handlers.base import BaseHandler, admin_required
 from webserver.models import User, Card, BookSource, DownloadLog, Database
-from webserver.legado_parser import LegadoParser, RuleExecutor, parse_legado_sources
+from webserver.settings import CONF
 
 logger = logging.getLogger(__name__)
+
+
+def extract_archive(file_path: str, dest_dir: str) -> list[str]:
+    """解压压缩包，返回解压出的文件列表"""
+    extracted_files = []
+
+    if not os.path.exists(file_path):
+        return extracted_files
+
+    # 获取文件扩展名
+    filename = os.path.basename(file_path)
+
+    try:
+        if filename.endswith('.zip'):
+            with zipfile.ZipFile(file_path, 'r') as zip_ref:
+                zip_ref.extractall(dest_dir)
+                extracted_files = [os.path.join(dest_dir, name) for name in zip_ref.namelist()]
+        elif filename.endswith('.tar.gz') or filename.endswith('.tgz'):
+            with tarfile.open(file_path, 'r:gz') as tar_ref:
+                tar_ref.extractall(dest_dir)
+                extracted_files = [os.path.join(dest_dir, name) for name in tar_ref.getnames()]
+        elif filename.endswith('.tar'):
+            with tarfile.open(file_path, 'r') as tar_ref:
+                tar_ref.extractall(dest_dir)
+                extracted_files = [os.path.join(dest_dir, name) for name in tar_ref.getnames()]
+    except Exception as e:
+        logger.error(f"解压文件失败: {e}")
+        raise
+
+    return extracted_files
 
 
 class AdminStatsHandler(BaseHandler):
@@ -267,6 +299,99 @@ class AdminBooksHandler(BaseHandler):
             logger.error(f"获取书籍列表失败: {e}")
             return self.write_error("books_failed", "获取书籍列表失败")
 
+    @admin_required
+    def post(self):
+        """上传本地书籍（支持压缩包解压）"""
+        try:
+            # 获取上传的文件
+            if 'file' not in self.request.files:
+                return self.write_error("invalid_params", "请上传文件")
+
+            file_info = self.request.files['file'][0]
+            filename = file_info['filename']
+            content_type = file_info['content_type']
+            body = file_info['body']
+
+            # 获取元数据
+            title = self.get_argument('title', '').strip()
+            author = self.get_argument('author', '').strip()
+            publisher = self.get_argument('publisher', '').strip()
+
+            if not title:
+                title = os.path.splitext(filename)[0]
+
+            # 保存上传文件到临时目录
+            temp_path = os.path.join(CONF['uploads_dir'], filename)
+            with open(temp_path, 'wb') as f:
+                f.write(body)
+
+            uploaded_files = []
+            books_dir = CONF['books_dir']
+
+            # 检查是否为压缩包
+            if filename.endswith(('.zip', '.tar.gz', '.tgz', '.tar')):
+                # 解压到临时目录
+                extract_dir = os.path.join(CONF['uploads_dir'], f"extract_{datetime.now().strftime('%Y%m%d%H%M%S')}")
+                os.makedirs(extract_dir, exist_ok=True)
+
+                extracted = extract_archive(temp_path, extract_dir)
+
+                # 移动解压出的书籍文件到 books 目录
+                for extracted_file in extracted:
+                    if os.path.isfile(extracted_file):
+                        dest_path = os.path.join(books_dir, os.path.basename(extracted_file))
+                        # 避免文件名冲突
+                        counter = 1
+                        while os.path.exists(dest_path):
+                            name, ext = os.path.splitext(os.path.basename(extracted_file))
+                            dest_path = os.path.join(books_dir, f"{name}_{counter}{ext}")
+                            counter += 1
+
+                        shutil.move(extracted_file, dest_path)
+                        uploaded_files.append(dest_path)
+
+                # 清理解压目录
+                shutil.rmtree(extract_dir, ignore_errors=True)
+                # 删除原始压缩包
+                os.remove(temp_path)
+            else:
+                # 普通文件，直接移动到 books 目录
+                dest_path = os.path.join(books_dir, filename)
+                counter = 1
+                while os.path.exists(dest_path):
+                    name, ext = os.path.splitext(filename)
+                    dest_path = os.path.join(books_dir, f"{name}_{counter}{ext}")
+                    counter += 1
+
+                shutil.move(temp_path, dest_path)
+                uploaded_files.append(dest_path)
+
+            # 记录到数据库
+            user = self.get_current_user()
+            for file_path in uploaded_files:
+                DownloadLog.create(
+                    user_id=user.id,
+                    book_title=title,
+                    book_author=author,
+                    source_url=publisher,
+                )
+                # 更新状态为已完成
+                db = Database()
+                db.execute(
+                    "UPDATE download_logs SET status = 'completed', file_path = ?, file_size = ? WHERE id = (SELECT MAX(id) FROM download_logs)",
+                    (file_path, os.path.getsize(file_path))
+                )
+
+            logger.info(f"管理员上传书籍: {title}, 文件数: {len(uploaded_files)}")
+            return self.write_success({
+                "uploaded_count": len(uploaded_files),
+                "files": uploaded_files,
+            })
+
+        except Exception as e:
+            logger.error(f"上传书籍失败: {e}")
+            return self.write_error("upload_failed", f"上传失败: {str(e)}")
+
 
 class AdminDeleteBookHandler(BaseHandler):
     """管理员删除书籍 Handler"""
@@ -297,159 +422,3 @@ class AdminDeleteBookHandler(BaseHandler):
         except Exception as e:
             logger.error(f"删除书籍失败: {e}")
             return self.write_error("delete_failed", "删除书籍失败")
-
-
-class AdminImportLegadoHandler(BaseHandler):
-    """导入 Legado 书源 Handler"""
-
-    @admin_required
-    def post(self):
-        """导入 Legado 书源 JSON"""
-        try:
-            # 获取请求体中的 JSON 数据
-            body = self.request.body
-            if not body:
-                return self.write_error("invalid_params", "请提供书源 JSON 数据")
-
-            json_text = body.decode('utf-8')
-            sources = parse_legado_sources(json_text)
-
-            if not sources:
-                return self.write_error("invalid_source", "无法解析有效的 Legado 书源")
-
-            imported = []
-            skipped = []
-
-            for source in sources:
-                try:
-                    # 检查是否已存在相同 URL 的书源
-                    existing = self._find_source_by_url(source.book_source_url)
-                    if existing:
-                        skipped.append({
-                            "name": source.book_source_name,
-                            "url": source.book_source_url,
-                            "reason": "书源已存在"
-                        })
-                        continue
-
-                    # 存储 Legado 书源到数据库
-                    config = {
-                        "legado": True,
-                        "bookSourceUrl": source.book_source_url,
-                        "bookSourceGroup": source.book_source_group,
-                        "bookSourceType": source.book_source_type,
-                        "searchUrl": source.search_url,
-                        "ruleSearch": source.rule_search,
-                        "ruleBookInfo": source.rule_book_info,
-                        "ruleToc": source.rule_toc,
-                        "ruleContent": source.rule_content,
-                        "exploreUrl": source.explore_url,
-                        "header": source.header,
-                    }
-
-                    new_source = BookSource.create(
-                        name=source.book_source_name,
-                        url=source.book_source_url,
-                        type='legado',
-                        config=config
-                    )
-
-                    imported.append({
-                        "id": new_source.id,
-                        "name": new_source.name,
-                        "url": new_source.url,
-                    })
-
-                except Exception as e:
-                    logger.warning(f"导入书源 {source.book_source_name} 失败: {e}")
-                    skipped.append({
-                        "name": source.book_source_name,
-                        "url": source.book_source_url,
-                        "reason": str(e)
-                    })
-
-            logger.info(f"成功导入 {len(imported)} 个 Legado 书源，跳过 {len(skipped)} 个")
-            return self.write_success({
-                "imported": imported,
-                "skipped": skipped,
-                "total": len(sources),
-            })
-
-        except Exception as e:
-            logger.error(f"导入 Legado 书源失败: {e}")
-            return self.write_error("import_failed", f"导入失败: {str(e)}")
-
-    def _find_source_by_url(self, url: str) -> bool:
-        """检查是否已存在相同 URL 的书源"""
-        try:
-            db = Database()
-            row = db.fetchone("SELECT id FROM book_sources WHERE url = ? LIMIT 1", (url,))
-            return row is not None
-        except:
-            return False
-
-
-class AdminTestLegadoHandler(BaseHandler):
-    """测试 Legado 书源 Handler"""
-
-    @admin_required
-    async def post(self):
-        """测试 Legado 书源搜索功能"""
-        try:
-            data = self.request.body_arguments
-            source_id = data.get('source_id', [b''])[0].decode('utf-8')
-            keyword = data.get('keyword', [b'test'])[0].decode('utf-8')
-
-            if not source_id:
-                return self.write_error("invalid_params", "请提供书源ID")
-
-            source = BookSource.get_by_id(int(source_id))
-            if not source:
-                return self.write_error("not_found", "书源不存在")
-
-            if source.type != 'legado':
-                return self.write_error("invalid_type", "只能测试 Legado 类型书源")
-
-            # 获取 Legado 配置
-            config = source.config or {}
-            search_url_template = config.get('searchUrl', '')
-
-            if not search_url_template:
-                return self.write_error("no_search_url", "该书源没有配置搜索URL")
-
-            # 构建搜索 URL
-            from webserver.legado_parser import LegadoSource
-            legado_source = LegadoSource({
-                'bookSourceUrl': source.url,
-                'bookSourceName': source.name,
-                'searchUrl': search_url_template,
-                'ruleSearch': config.get('ruleSearch', {}),
-            })
-
-            search_url = LegadoParser.build_search_url(legado_source, keyword)
-
-            # 发送请求
-            async with aiohttp.ClientSession() as session:
-                async with session.get(
-                    search_url,
-                    timeout=aiohttp.ClientTimeout(total=10),
-                    headers={'User-Agent': 'Mozilla/5.0'}
-                ) as response:
-                    if response.status != 200:
-                        return self.write_error(
-                            "request_failed",
-                            f"请求失败，状态码: {response.status}"
-                        )
-
-                    content = await response.text()
-
-            return self.write_success({
-                "search_url": search_url,
-                "status_code": response.status,
-                "content_length": len(content),
-                "preview": content[:500] if content else "",
-            })
-
-        except Exception as e:
-            logger.error(f"测试 Legado 书源失败: {e}")
-            return self.write_error("test_failed", f"测试失败: {str(e)}")

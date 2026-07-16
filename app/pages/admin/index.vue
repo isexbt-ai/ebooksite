@@ -1,4 +1,8 @@
 <script setup lang="ts">
+definePageMeta({
+  middleware: ['admin-auth'],
+})
+
 const { t } = useI18n()
 const authStore = useAuthStore()
 
@@ -74,6 +78,19 @@ onMounted(() => {
             <v-card-subtitle>下载总数</v-card-subtitle>
           </v-card-item>
         </v-card>
+      </v-col>
+    </v-row>
+
+    <v-row class="mt-8">
+      <v-col cols="12">
+        <v-btn
+          to="/"
+          variant="text"
+          prepend-icon="mdi-arrow-left"
+          class="mb-4"
+        >
+          返回首页
+        </v-btn>
       </v-col>
     </v-row>
 

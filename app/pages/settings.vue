@@ -117,9 +117,23 @@ const remainingDays = computed(() => {
   return diff > 0 ? diff : 0
 })
 
-// 每日使用次数统计（模拟数据）
-const dailyUsage = ref(12)
+// 每日使用次数统计
+const dailyUsage = ref(0)
 const dailyLimit = ref(50)
+
+// 获取今日使用次数
+const fetchDailyUsage = async () => {
+  try {
+    const { get } = useApi()
+    const data = await get('/api/user/daily_usage')
+    if (data.data) {
+      dailyUsage.value = data.data.usage || 0
+      dailyLimit.value = data.data.limit || 50
+    }
+  } catch (err: any) {
+    console.error('获取使用次数失败:', err)
+  }
+}
 
 // 下载记录
 const downloads = ref([])
@@ -164,6 +178,7 @@ onMounted(() => {
     return
   }
   fetchDownloads()
+  fetchDailyUsage()
 })
 </script>
 

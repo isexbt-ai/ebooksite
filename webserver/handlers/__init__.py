@@ -14,6 +14,13 @@ from webserver.handlers.auth import (
 )
 from webserver.handlers.search import SearchHandler
 from webserver.handlers.download import DownloadHandler, DownloadStatusHandler, DownloadHistoryHandler
+from webserver.handlers.batch_download import (
+    SourceCategoriesHandler,
+    BatchDownloadHandler,
+    BatchDownloadStatusHandler,
+    BatchDownloadListHandler,
+    BatchDownloadStopHandler,
+)
 from webserver.handlers.admin import (
     AdminStatsHandler,
     AdminUsersHandler,
@@ -24,8 +31,6 @@ from webserver.handlers.admin import (
     AdminToggleSourceHandler,
     AdminBooksHandler,
     AdminDeleteBookHandler,
-    AdminImportLegadoHandler,
-    AdminTestLegadoHandler,
 )
 from webserver.handlers.user import (
     UserSettingsHandler,
@@ -85,11 +90,12 @@ routes = [
     # 管理员 - 系统设置
     (r"/api/admin/settings", AdminSettingsHandler),
 
-    # 管理员 - 反馈管理
+    # 批量下载
+    (r"/api/admin/sources/([0-9]+)/categories", SourceCategoriesHandler),
+    (r"/api/admin/batch-download", BatchDownloadHandler),
+    (r"/api/admin/batch-download/([0-9]+)/status", BatchDownloadStatusHandler),
+    (r"/api/admin/batch-download/tasks", BatchDownloadListHandler),
+    (r"/api/admin/batch-download/([0-9]+)/stop", BatchDownloadStopHandler),
     (r"/api/admin/feedbacks", AdminFeedbackListHandler),
     (r"/api/admin/feedbacks/([0-9]+)/delete", AdminFeedbackDeleteHandler),
-
-    # Legado 书源导入
-    (r"/api/admin/sources/import/legado", AdminImportLegadoHandler),
-    (r"/api/admin/sources/test/legado", AdminTestLegadoHandler),
 ]
