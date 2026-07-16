@@ -1,66 +1,293 @@
 <script setup lang="ts">
 const { t } = useI18n()
+const authStore = useAuthStore()
 
-const features = [
-  {
-    icon: 'mdi-magnify',
-    title: '搜索下载',
-    description: '从网络书库搜索并下载书籍',
-    to: '/search',
-  },
-  {
-    icon: 'mdi-book-open-variant',
-    title: '本地书库',
-    description: '管理您的本地书籍收藏',
-    to: '/library',
-  },
-  {
-    icon: 'mdi-cog',
-    title: '系统管理',
-    description: '管理用户、卡密和书源',
-    to: '/admin',
-  },
-]
+// 搜索相关
+const searchQuery = ref('')
+const loading = ref(false)
+
+const search = () => {
+  if (!searchQuery.value.trim()) return
+  navigateTo(`/search?query=${encodeURIComponent(searchQuery.value)}`)
+}
+
+// 导航
+const navigateTo = (path: string) => {
+  window.location.href = path
+}
 </script>
 
 <template>
-  <div>
-    <!-- 欢迎区域 -->
-    <v-row justify="center" class="my-8">
-      <v-col cols="12" md="8" class="text-center">
-        <h1 class="text-h2 font-weight-bold mb-4">
-          {{ $t('welcome') }}
-        </h1>
-        <p class="text-body-1 text-medium-emphasis">
-          基于 Talebook 的精简版图书管理系统
-        </p>
-      </v-col>
-    </v-row>
+  <div class="mobile-home">
+    <!-- 顶部搜索区 -->
+    <div class="search-header">
+      <div class="search-title">
+        <v-icon icon="mdi-book-open-page-variant" size="28" color="white" class="mr-2" />
+        <span class="title-text">搜书机器人</span>
+      </div>
+      <p class="search-subtitle">全网小说一键搜索</p>
+    </div>
+
+    <!-- 搜索框 -->
+    <div class="search-box">
+      <div class="search-input-wrapper">
+        <v-icon icon="mdi-magnify" size="20" color="#90A4AE" class="search-icon" />
+        <input
+          v-model="searchQuery"
+          type="text"
+          placeholder="输入书名或作者..."
+          class="search-input"
+          @keyup.enter="search"
+        />
+        <button
+          class="search-btn"
+          :disabled="loading"
+          @click="search"
+        >
+          <v-icon icon="mdi-arrow-right" size="20" color="white" />
+        </button>
+      </div>
+    </div>
 
     <!-- 功能卡片 -->
-    <v-row justify="center" class="my-8">
-      <v-col
-        v-for="feature in features"
-        :key="feature.title"
-        cols="12"
-        sm="6"
-        md="4"
-        class="pa-4"
-      >
-        <v-card
-          :to="feature.to"
-          hover
-          class="h-100"
-        >
-          <v-card-item>
-            <template #prepend>
-              <v-icon :icon="feature.icon" size="48" color="primary" />
-            </template>
-            <v-card-title>{{ feature.title }}</v-card-title>
-            <v-card-text>{{ feature.description }}</v-card-text>
-          </v-card-item>
-        </v-card>
-      </v-col>
-    </v-row>
+    <div class="feature-cards">
+      <div class="feature-card" @click="navigateTo('/search')">
+        <div class="feature-icon bg-blue">
+          <v-icon icon="mdi-ticket" size="24" color="white" />
+        </div>
+        <span class="feature-text">卡密购买</span>
+      </div>
+      <div class="feature-card" @click="navigateTo('/search')">
+        <div class="feature-icon bg-green">
+          <v-icon icon="mdi-send" size="24" color="white" />
+        </div>
+        <span class="feature-text">需求提交</span>
+      </div>
+    </div>
+
+    <!-- 宣传横幅 -->
+    <div class="promo-banner">
+      <div class="promo-content">
+        <v-icon icon="mdi-robot" size="32" color="white" class="promo-icon" />
+        <div class="promo-text">
+          <h3>自助找书</h3>
+          <p>AI智能搜索，秒找全网资源</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 底部双Tab导航 -->
+    <div class="bottom-nav">
+      <div class="nav-item active">
+        <v-icon icon="mdi-home" size="24" color="#2196F3" />
+        <span class="nav-text active">首页</span>
+      </div>
+      <div class="nav-item" @click="navigateTo('/settings')">
+        <v-icon icon="mdi-account" size="24" color="#90A4AE" />
+        <span class="nav-text">我的</span>
+      </div>
+    </div>
   </div>
 </template>
+
+<style scoped>
+.mobile-home {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #E3F2FD 0%, #F5FBFF 50%, #E8F4FD 100%);
+  padding-bottom: 80px;
+  position: relative;
+}
+
+/* 顶部搜索区 */
+.search-header {
+  background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+  padding: 48px 20px 32px;
+  border-radius: 0 0 24px 24px;
+  text-align: center;
+}
+
+.search-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+.title-text {
+  font-size: 24px;
+  font-weight: 700;
+  color: white;
+}
+
+.search-subtitle {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.8);
+  margin: 0;
+}
+
+/* 搜索框 */
+.search-box {
+  padding: 0 20px;
+  margin-top: -16px;
+}
+
+.search-input-wrapper {
+  display: flex;
+  align-items: center;
+  background: white;
+  border-radius: 16px;
+  padding: 4px 4px 4px 16px;
+  box-shadow: 0 4px 20px rgba(33, 150, 243, 0.15);
+}
+
+.search-icon {
+  flex-shrink: 0;
+}
+
+.search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 15px;
+  color: #37474F;
+  padding: 12px 8px;
+  background: transparent;
+}
+
+.search-input::placeholder {
+  color: #90A4AE;
+}
+
+.search-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform 0.2s;
+}
+
+.search-btn:active {
+  transform: scale(0.95);
+}
+
+/* 功能卡片 */
+.feature-cards {
+  display: flex;
+  gap: 12px;
+  padding: 24px 20px 0;
+}
+
+.feature-card {
+  flex: 1;
+  background: white;
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.feature-card:active {
+  transform: scale(0.98);
+}
+
+.feature-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bg-blue {
+  background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+}
+
+.bg-green {
+  background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%);
+}
+
+.feature-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: #37474F;
+}
+
+/* 宣传横幅 */
+.promo-banner {
+  margin: 24px 20px 0;
+  background: linear-gradient(135deg, #FF5252 0%, #E53935 100%);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 4px 16px rgba(255, 82, 82, 0.2);
+}
+
+.promo-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.promo-icon {
+  flex-shrink: 0;
+}
+
+.promo-text h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: white;
+  margin: 0 0 4px;
+}
+
+.promo-text p {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.85);
+  margin: 0;
+}
+
+/* 底部导航 */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 64px;
+  background: white;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.06);
+  border-radius: 24px 24px 0 0;
+  z-index: 100;
+}
+
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  padding: 8px 24px;
+}
+
+.nav-text {
+  font-size: 12px;
+  color: #90A4AE;
+  font-weight: 500;
+}
+
+.nav-text.active {
+  color: #2196F3;
+}
+</style>

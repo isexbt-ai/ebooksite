@@ -19,15 +19,34 @@ logger = logging.getLogger(__name__)
 class DownloadHandler(BaseHandler):
     """下载 Handler"""
 
+    def _get_post_data(self):
+        """获取 POST 请求数据，支持 form-data 和 JSON"""
+        content_type = self.request.headers.get('Content-Type', '')
+        if content_type.startswith('application/json'):
+            try:
+                body = self.request.body
+                if body:
+                    return json.loads(body.decode('utf-8'))
+                return {}
+            except (json.JSONDecodeError, UnicodeDecodeError):
+                return {}
+        else:
+            # form-data 格式
+            result = {}
+            for key, values in self.request.body_arguments.items():
+                if values:
+                    result[key] = values[0].decode('utf-8')
+            return result
+
     @auth_required
     async def post(self):
         """开始下载"""
         try:
-            data = self.request.body_arguments
-            title = data.get('title', [b''])[0].decode('utf-8')
-            author = data.get('author', [b''])[0].decode('utf-8')
-            download_url = data.get('download_url', [b''])[0].decode('utf-8')
-            source_id = data.get('source_id', [b''])[0].decode('utf-8')
+            data = self._get_post_data()
+            title = data.get('title', '')
+            author = data.get('author', '')
+            download_url = data.get('download_url', '')
+            source_id = data.get('source_id', '')
 
             if not download_url:
                 return self.write_error("invalid_params", "下载链接不能为空")

@@ -25,13 +25,32 @@ def generate_card_code() -> str:
 class RegisterHandler(BaseHandler):
     """注册 Handler"""
 
+    def _get_post_data(self):
+        """获取 POST 请求数据，支持 form-data 和 JSON"""
+        content_type = self.request.headers.get('Content-Type', '')
+        if content_type.startswith('application/json'):
+            try:
+                body = self.request.body
+                if body:
+                    return json.loads(body.decode('utf-8'))
+                return {}
+            except (json.JSONDecodeError, UnicodeDecodeError):
+                return {}
+        else:
+            # form-data 格式
+            result = {}
+            for key, values in self.request.body_arguments.items():
+                if values:
+                    result[key] = values[0].decode('utf-8')
+            return result
+
     def post(self):
         """用户注册"""
         try:
-            data = self.request.body_arguments
-            username = data.get('username', [b''])[0].decode('utf-8').strip()
-            password = data.get('password', [b''])[0].decode('utf-8')
-            card_code = data.get('card_code', [b''])[0].decode('utf-8').strip()
+            data = self._get_post_data()
+            username = data.get('username', '').strip()
+            password = data.get('password', '')
+            card_code = data.get('card_code', '').strip()
 
             # 验证参数
             if not username or not password:
@@ -92,9 +111,9 @@ class LoginHandler(BaseHandler):
     def post(self):
         """用户登录"""
         try:
-            data = self.request.body_arguments
-            username = data.get('username', [b''])[0].decode('utf-8').strip().lower()
-            password = data.get('password', [b''])[0].decode('utf-8')
+            data = self._get_post_data()
+            username = data.get('username', '').strip().lower()
+            password = data.get('password', '')
 
             if not username or not password:
                 return self.write_error("invalid_params", "用户名和密码不能为空")
@@ -163,8 +182,8 @@ class RedeemHandler(BaseHandler):
     def post(self):
         """兑换卡密"""
         try:
-            data = self.request.body_arguments
-            card_code = data.get('card_code', [b''])[0].decode('utf-8').strip()
+            data = self._get_post_data()
+            card_code = data.get('card_code', '').strip()
 
             if not card_code:
                 return self.write_error("invalid_card", "请输入卡密")
@@ -207,10 +226,10 @@ class GenerateCardsHandler(BaseHandler):
     def post(self):
         """批量生成卡密"""
         try:
-            data = self.request.body_arguments
-            count = int(data.get('count', [b'10'])[0])
-            card_type = data.get('type', [b'register'])[0].decode('utf-8')
-            duration_days = int(data.get('duration_days', [b'30'])[0])
+            data = self._get_post_data()
+            count = int(data.get('count', 10))
+            card_type = data.get('type', 'register')
+            duration_days = int(data.get('duration_days', 30))
 
             if count < 1 or count > 100:
                 return self.write_error("invalid_count", "生成数量必须在1-100之间")

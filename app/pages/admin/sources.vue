@@ -15,6 +15,12 @@ const newSource = ref({
 })
 const adding = ref(false)
 
+// Legado 导入对话框
+const showImportDialog = ref(false)
+const importText = ref('')
+const importing = ref(false)
+const importResult = ref(null)
+
 // 获取书源列表
 const fetchSources = async () => {
   loading.value = true
@@ -79,6 +85,76 @@ const toggleSource = async (source: any) => {
   }
 }
 
+// 打开 Legado 导入对话框
+const openImportDialog = () => {
+  showImportDialog.value = true
+  importText.value = ''
+  importResult.value = null
+}
+
+// 导入 Legado 书源
+const importLegadoSources = async () => {
+  if (!importText.value.trim()) {
+    alert('请输入 Legado 书源 JSON')
+    return
+  }
+
+  importing.value = true
+  importResult.value = null
+
+  try {
+    const { request } = useApi()
+    const data = await request('/api/admin/sources/import/legado', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: importText.value,
+    })
+
+    importResult.value = data.data
+    fetchSources()
+  } catch (err: any) {
+    console.error('导入 Legado 书源失败:', err)
+    importResult.value = {
+      error: err.message || '导入失败',
+      imported: [],
+      skipped: [],
+    }
+  } finally {
+    importing.value = false
+  }
+}
+
+// 从 URL 导入
+const importFromUrl = async () => {
+  const url = prompt('请输入 Legado 书源 URL：')
+  if (!url) return
+
+  importing.value = true
+  try {
+    const response = await fetch(url)
+    const text = await response.text()
+    importText.value = text
+    await importLegadoSources()
+  } catch (err: any) {
+    alert('从 URL 获取书源失败: ' + err.message)
+    importing.value = false
+  }
+}
+
+// 从文件导入
+const handleFileUpload = (event: Event) => {
+  const file = (event.target as HTMLInputElement).files?.[0]
+  if (!file) return
+
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    importText.value = e.target?.result as string
+  }
+  reader.readAsText(file)
+}
+
 onMounted(() => {
   fetchSources()
 })
@@ -139,8 +215,35 @@ onMounted(() => {
         </v-card>
       </v-col>
 
-      <!-- 书源列表 -->
+      <!-- Legado 导入 -->
       <v-col cols="12" md="6">
+        <v-card elevation="2">
+          <v-card-title>
+            <v-icon left>mdi-import</v-icon>
+            Legado 书源导入
+          </v-card-title>
+
+          <v-card-text>
+            <p class="text-body-2 text-medium-emphasis mb-4">
+              支持导入 Legado 格式的书源 JSON，支持单个书源或书源数组。
+            </p>
+
+            <v-btn
+              color="primary"
+              block
+              @click="openImportDialog"
+            >
+              <v-icon left>mdi-import</v-icon>
+              导入 Legado 书源
+            </v-btn>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
+
+    <!-- 书源列表 -->
+    <v-row class="mt-4">
+      <v-col cols="12">
         <v-card elevation="2">
           <v-card-title>
             <v-icon left>mdi-source-branch</v-icon>
@@ -190,5 +293,124 @@ onMounted(() => {
         </v-card>
       </v-col>
     </v-row>
+
+    <!-- Legado 导入对话框 -->
+    <v-dialog v-model="showImportDialog" max-width="800">
+      <v-card>
+        <v-card-title>
+          <v-icon left>mdi-import</v-icon>
+          导入 Legado 书源
+        </v-card-title>
+
+        <v-card-text>
+          <!-- 导入方式选择 -->
+          <v-row class="mb-4">
+            <v-col cols="12" sm="4">
+              <v-btn
+                color="primary"
+                variant="outlined"
+                block
+                @click="importFromUrl"
+              >
+                <v-icon left>mdi-link</v-icon>
+                从 URL 导入
+              </v-btn>
+            </v-col>
+            <v-col cols="12" sm="4">
+              <v-btn
+                color="primary"
+                variant="outlined"
+                block
+                @click="$refs.fileInput.click()"
+              >
+                <v-icon left>mdi-file-upload</v-icon>
+                从文件导入
+              </v-btn>
+              <input
+                ref="fileInput"
+                type="file"
+                accept=".json"
+                style="display: none"
+                @change="handleFileUpload"
+              />
+            </v-col>
+            <v-col cols="12" sm="4">
+              <v-btn
+                color="primary"
+                variant="outlined"
+                block
+                @click="importLegadoSources"
+                :loading="importing"
+              >
+                <v-icon left>mdi-content-paste</v-icon>
+                粘贴导入
+              </v-btn>
+            </v-col>
+          </v-row>
+
+          <!-- 粘贴区域 -->
+          <v-textarea
+            v-model="importText"
+            label="粘贴 Legado 书源 JSON"
+            placeholder="[{&quot;bookSourceName&quot;: &quot;示例书源&quot;, &quot;bookSourceUrl&quot;: &quot;https://example.com&quot;, ...}]"
+            variant="outlined"
+            rows="10"
+            class="mb-4"
+            auto-grow
+          />
+
+          <!-- 导入结果 -->
+          <div v-if="importResult">
+            <v-divider class="my-4" />
+            <h3 class="text-h6 mb-2">导入结果</h3>
+
+            <v-alert
+              v-if="importResult.imported && importResult.imported.length > 0"
+              type="success"
+              variant="tonal"
+              class="mb-2"
+            >
+              成功导入 {{ importResult.imported.length }} 个书源
+            </v-alert>
+
+            <v-alert
+              v-if="importResult.skipped && importResult.skipped.length > 0"
+              type="warning"
+              variant="tonal"
+              class="mb-2"
+            >
+              跳过 {{ importResult.skipped.length }} 个书源
+              <ul class="mt-2">
+                <li v-for="(item, index) in importResult.skipped" :key="index">
+                  {{ item.name }} - {{ item.reason }}
+                </li>
+              </ul>
+            </v-alert>
+
+            <v-alert
+              v-if="importResult.error"
+              type="error"
+              variant="tonal"
+              class="mb-2"
+            >
+              {{ importResult.error }}
+            </v-alert>
+          </div>
+        </v-card-text>
+
+        <v-card-actions>
+          <v-btn
+            color="primary"
+            :loading="importing"
+            :disabled="importing || !importText.trim()"
+            @click="importLegadoSources"
+          >
+            <v-icon left>mdi-import</v-icon>
+            导入
+          </v-btn>
+          <v-btn @click="showImportDialog = false">关闭</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>

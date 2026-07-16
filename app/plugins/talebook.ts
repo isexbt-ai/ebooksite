@@ -31,14 +31,12 @@ export const useApi = () => {
   }
 
   const post = async (url: string, body: any = {}) => {
-    const params = new URLSearchParams()
-    Object.entries(body).forEach(([key, value]) => {
-      params.append(key, String(value))
-    })
-
     return request(url, {
       method: 'POST',
-      body: params,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
     })
   }
 
