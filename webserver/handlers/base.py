@@ -18,23 +18,27 @@ class BaseHandler(tornado.web.RequestHandler):
     """基础 Handler"""
 
     def prepare(self):
-        """请求预处理 - 支持 JSON 请求体"""
+        """请求预处理"""
+        pass
+
+    def _get_post_data(self) -> dict:
+        """获取 POST 请求数据，自动兼容 form-data 和 JSON"""
         content_type = self.request.headers.get('Content-Type', '')
         if content_type.startswith('application/json'):
             try:
                 body = self.request.body
                 if body:
-                    self.json_body = json.loads(body.decode('utf-8'))
-                else:
-                    self.json_body = {}
+                    return json.loads(body.decode('utf-8'))
+                return {}
             except (json.JSONDecodeError, UnicodeDecodeError):
-                self.json_body = {}
+                return {}
         else:
-            self.json_body = {}
-
-    def get_json_argument(self, name: str, default=None):
-        """获取 JSON 请求参数"""
-        return self.json_body.get(name, default)
+            # application/x-www-form-urlencoded 或 multipart/form-data
+            result = {}
+            for key, values in self.request.body_arguments.items():
+                if values:
+                    result[key] = values[0].decode('utf-8')
+            return result
 
     def get_current_user(self) -> Optional[User]:
         """获取当前登录用户"""

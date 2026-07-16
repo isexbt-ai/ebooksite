@@ -36,7 +36,6 @@ class BuyLinkHandler(BaseHandler):
             url = data.get('url', '').strip()
 
             db = Database()
-            # UPSERT
             existing = db.fetchone("SELECT id FROM system_settings WHERE key = 'buy_link'")
             if existing:
                 db.execute("UPDATE system_settings SET value = ? WHERE key = 'buy_link'", (url,))
@@ -49,43 +48,9 @@ class BuyLinkHandler(BaseHandler):
             logger.error(f"设置购买链接失败: {e}")
             return self.write_error("save_failed", "保存失败")
 
-    def _get_post_data(self):
-        content_type = self.request.headers.get('Content-Type', '')
-        if content_type.startswith('application/json'):
-            try:
-                body = self.request.body
-                if body:
-                    return json.loads(body.decode('utf-8'))
-                return {}
-            except (json.JSONDecodeError, UnicodeDecodeError):
-                return {}
-        else:
-            result = {}
-            for key, values in self.request.body_arguments.items():
-                if values:
-                    result[key] = values[0].decode('utf-8')
-            return result
-
 
 class FeedbackHandler(BaseHandler):
     """用户反馈 Handler"""
-
-    def _get_post_data(self):
-        content_type = self.request.headers.get('Content-Type', '')
-        if content_type.startswith('application/json'):
-            try:
-                body = self.request.body
-                if body:
-                    return json.loads(body.decode('utf-8'))
-                return {}
-            except (json.JSONDecodeError, UnicodeDecodeError):
-                return {}
-        else:
-            result = {}
-            for key, values in self.request.body_arguments.items():
-                if values:
-                    result[key] = values[0].decode('utf-8')
-            return result
 
     def post(self):
         """提交反馈"""
@@ -97,7 +62,6 @@ class FeedbackHandler(BaseHandler):
             if not content:
                 return self.write_error("invalid_params", "请输入反馈内容")
 
-            # 获取用户信息（可选）
             user_id = None
             user = self.get_current_user()
             if user:
@@ -202,20 +166,3 @@ class AdminSettingsHandler(BaseHandler):
         except Exception as e:
             logger.error(f"保存系统设置失败: {e}")
             return self.write_error("save_failed", "保存失败")
-
-    def _get_post_data(self):
-        content_type = self.request.headers.get('Content-Type', '')
-        if content_type.startswith('application/json'):
-            try:
-                body = self.request.body
-                if body:
-                    return json.loads(body.decode('utf-8'))
-                return {}
-            except (json.JSONDecodeError, UnicodeDecodeError):
-                return {}
-        else:
-            result = {}
-            for key, values in self.request.body_arguments.items():
-                if values:
-                    result[key] = values[0].decode('utf-8')
-            return result

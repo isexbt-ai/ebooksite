@@ -147,25 +147,6 @@ class AdminCardsHandler(BaseHandler):
 class AdminSourcesHandler(BaseHandler):
     """管理员书源列表 Handler"""
 
-    def _get_post_data(self):
-        """获取 POST 请求数据，支持 form-data 和 JSON"""
-        content_type = self.request.headers.get('Content-Type', '')
-        if content_type.startswith('application/json'):
-            try:
-                body = self.request.body
-                if body:
-                    return json.loads(body.decode('utf-8'))
-                return {}
-            except (json.JSONDecodeError, UnicodeDecodeError):
-                return {}
-        else:
-            # form-data 格式
-            result = {}
-            for key, values in self.request.body_arguments.items():
-                if values:
-                    result[key] = values[0].decode('utf-8')
-            return result
-
     @admin_required
     def get(self):
         """获取所有书源"""
