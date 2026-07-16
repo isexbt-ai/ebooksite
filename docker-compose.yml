@@ -1,0 +1,15 @@
+version: "3.8"
+
+services:
+  book-site:
+    build: .
+    restart: always
+    ports:
+      - "8080:80"
+    volumes:
+      - ./data:/data
+    environment:
+      - TZ=Asia/Shanghai
+      - SECRET_KEY=your-secret-key-here
+      - ADMIN_USERNAME=admin
+      - ADMIN_PASSWORD=admin123

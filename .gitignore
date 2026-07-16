@@ -1,0 +1,9 @@
+node_modules/
+.nuxt/
+.output/
+*.log
+data/
+__pycache__/
+*.pyc
+.DS_Store
+.env
