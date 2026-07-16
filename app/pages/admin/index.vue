@@ -110,18 +110,6 @@ onMounted(() => {
 
               <v-col cols="12" sm="6" md="3">
                 <v-btn
-                  to="/admin/books"
-                  color="warning"
-                  size="large"
-                  block
-                >
-                  <v-icon left>mdi-book</v-icon>
-                  {{ $t('book_management') }}
-                </v-btn>
-              </v-col>
-
-              <v-col cols="12" sm="6" md="3">
-                <v-btn
                   to="/admin/sources"
                   color="info"
                   size="large"
@@ -129,6 +117,42 @@ onMounted(() => {
                 >
                   <v-icon left>mdi-source-branch</v-icon>
                   {{ $t('source_management') }}
+                </v-btn>
+              </v-col>
+
+              <v-col cols="12" sm="6" md="3">
+                <v-btn
+                  to="/admin/feedbacks"
+                  color="purple"
+                  size="large"
+                  block
+                >
+                  <v-icon left>mdi-message-text</v-icon>
+                  反馈管理
+                </v-btn>
+              </v-col>
+
+              <v-col cols="12" sm="6" md="3">
+                <v-btn
+                  to="/admin/settings"
+                  color="teal"
+                  size="large"
+                  block
+                >
+                  <v-icon left>mdi-cog</v-icon>
+                  系统设置
+                </v-btn>
+              </v-col>
+
+              <v-col cols="12" sm="6" md="3">
+                <v-btn
+                  to="/admin/books"
+                  color="warning"
+                  size="large"
+                  block
+                >
+                  <v-icon left>mdi-book</v-icon>
+                  {{ $t('book_management') }}
                 </v-btn>
               </v-col>
             </v-row>

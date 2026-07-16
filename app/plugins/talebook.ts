@@ -7,7 +7,6 @@ export const useApi = () => {
 
   const request = async (url: string, options: any = {}) => {
     const headers: Record<string, string> = {
-      'Content-Type': 'application/x-www-form-urlencoded',
       ...options.headers,
     }
 
@@ -31,12 +30,17 @@ export const useApi = () => {
   }
 
   const post = async (url: string, body: any = {}) => {
+    const params = new URLSearchParams()
+    Object.entries(body).forEach(([key, value]) => {
+      params.append(key, String(value))
+    })
+
     return request(url, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: JSON.stringify(body),
+      body: params,
     })
   }
 

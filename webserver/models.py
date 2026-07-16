@@ -119,6 +119,29 @@ def init_database():
         )
     """)
 
+    # 系统设置表
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS system_settings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            key VARCHAR(100) UNIQUE NOT NULL,
+            value TEXT DEFAULT '',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    # 用户反馈表
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS feedbacks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            content TEXT NOT NULL,
+            contact VARCHAR(200) DEFAULT '',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+    """)
+
     # 创建默认管理员账号
     create_default_admin()
 

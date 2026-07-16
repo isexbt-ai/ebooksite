@@ -108,6 +108,25 @@ class RegisterHandler(BaseHandler):
 class LoginHandler(BaseHandler):
     """登录 Handler"""
 
+    def _get_post_data(self):
+        """获取 POST 请求数据，支持 form-data 和 JSON"""
+        content_type = self.request.headers.get('Content-Type', '')
+        if content_type.startswith('application/json'):
+            try:
+                body = self.request.body
+                if body:
+                    return json.loads(body.decode('utf-8'))
+                return {}
+            except (json.JSONDecodeError, UnicodeDecodeError):
+                return {}
+        else:
+            # form-data 格式
+            result = {}
+            for key, values in self.request.body_arguments.items():
+                if values:
+                    result[key] = values[0].decode('utf-8')
+            return result
+
     def post(self):
         """用户登录"""
         try:
@@ -178,6 +197,25 @@ class MeHandler(BaseHandler):
 class RedeemHandler(BaseHandler):
     """卡密兑换 Handler"""
 
+    def _get_post_data(self):
+        """获取 POST 请求数据，支持 form-data 和 JSON"""
+        content_type = self.request.headers.get('Content-Type', '')
+        if content_type.startswith('application/json'):
+            try:
+                body = self.request.body
+                if body:
+                    return json.loads(body.decode('utf-8'))
+                return {}
+            except (json.JSONDecodeError, UnicodeDecodeError):
+                return {}
+        else:
+            # form-data 格式
+            result = {}
+            for key, values in self.request.body_arguments.items():
+                if values:
+                    result[key] = values[0].decode('utf-8')
+            return result
+
     @auth_required
     def post(self):
         """兑换卡密"""
@@ -221,6 +259,25 @@ class RedeemHandler(BaseHandler):
 
 class GenerateCardsHandler(BaseHandler):
     """生成卡密 Handler（管理员）"""
+
+    def _get_post_data(self):
+        """获取 POST 请求数据，支持 form-data 和 JSON"""
+        content_type = self.request.headers.get('Content-Type', '')
+        if content_type.startswith('application/json'):
+            try:
+                body = self.request.body
+                if body:
+                    return json.loads(body.decode('utf-8'))
+                return {}
+            except (json.JSONDecodeError, UnicodeDecodeError):
+                return {}
+        else:
+            # form-data 格式
+            result = {}
+            for key, values in self.request.body_arguments.items():
+                if values:
+                    result[key] = values[0].decode('utf-8')
+            return result
 
     @admin_required
     def post(self):

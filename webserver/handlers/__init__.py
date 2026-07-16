@@ -33,6 +33,13 @@ from webserver.handlers.user import (
     BooksHandler,
     DeleteBookHandler,
 )
+from webserver.handlers.settings import (
+    BuyLinkHandler,
+    FeedbackHandler,
+    AdminFeedbackListHandler,
+    AdminFeedbackDeleteHandler,
+    AdminSettingsHandler,
+)
 
 # 路由列表
 routes = [
@@ -57,6 +64,12 @@ routes = [
     (r"/api/user/settings", UserSettingsHandler),
     (r"/api/user/password", UserPasswordHandler),
 
+    # 系统设置（公开）
+    (r"/api/settings/buy_link", BuyLinkHandler),
+
+    # 用户反馈
+    (r"/api/feedback", FeedbackHandler),
+
     # 管理员相关
     (r"/api/admin/cards/generate", GenerateCardsHandler),
     (r"/api/admin/stats", AdminStatsHandler),
@@ -68,6 +81,13 @@ routes = [
     (r"/api/admin/sources/([0-9]+)/toggle", AdminToggleSourceHandler),
     (r"/api/admin/books", AdminBooksHandler),
     (r"/api/admin/books/([0-9]+)/delete", AdminDeleteBookHandler),
+
+    # 管理员 - 系统设置
+    (r"/api/admin/settings", AdminSettingsHandler),
+
+    # 管理员 - 反馈管理
+    (r"/api/admin/feedbacks", AdminFeedbackListHandler),
+    (r"/api/admin/feedbacks/([0-9]+)/delete", AdminFeedbackDeleteHandler),
 
     # Legado 书源导入
     (r"/api/admin/sources/import/legado", AdminImportLegadoHandler),
