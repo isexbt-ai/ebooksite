@@ -1,9 +1,10 @@
-// API 请求封装
-export const useApi = () => {
-  const config = useRuntimeConfig()
-  const { token } = useAuthStore()
+// API 请求封装 - 作为 Nuxt 插件提供
+export default defineNuxtPlugin(() => {
+  // 无需额外初始化
+})
 
-  const baseURL = config.public.apiBase || 'http://127.0.0.1:8080'
+export const useApi = () => {
+  const { token } = useAuthStore()
 
   const request = async (url: string, options: any = {}) => {
     const headers: Record<string, string> = {
@@ -14,7 +15,7 @@ export const useApi = () => {
       headers['Authorization'] = `Bearer ${token}`
     }
 
-    const response = await fetch(`${baseURL}${url}`, {
+    const response = await fetch(url, {
       ...options,
       headers,
       credentials: 'include',

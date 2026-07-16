@@ -12,9 +12,7 @@ export default defineNuxtConfig({
 
   // Vuetify 配置
   vuetify: {
-    moduleOptions: {
-      /* module specific options */
-    },
+    moduleOptions: {},
     vuetifyOptions: {
       theme: {
         defaultTheme: 'light',
@@ -61,20 +59,20 @@ export default defineNuxtConfig({
   // 运行时配置
   runtimeConfig: {
     public: {
-      apiBase: process.env.API_URL || 'http://127.0.0.1:8080',
+      apiBase: '',
     },
   },
 
-  // 开发服务器代理
+  // 开发服务器
   devServer: {
     port: 3000,
   },
 
-  // Nitro 配置
+  // Nitro 配置 - 开发环境代理API到后端
   nitro: {
     devProxy: {
       '/api': {
-        target: 'http://127.0.0.1:8080',
+        target: 'http://127.0.0.1:8080/api',
         changeOrigin: true,
       },
     },
