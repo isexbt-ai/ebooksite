@@ -96,8 +96,11 @@ export const useAuthStore = defineStore('auth', {
         }
       } catch (error) {
         console.error('获取用户信息失败:', error)
-        // 如果获取失败，清除登录状态
-        this.logout()
+        // 静默失败，不自动登出（避免频繁跳转登录页）
+        // 只有明确返回 401 时才登出
+        if (error && (error as any).status === 401) {
+          this.logout()
+        }
       }
     },
   },

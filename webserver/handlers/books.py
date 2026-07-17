@@ -4,16 +4,41 @@
 
 import logging
 import os
+import time
 import urllib.parse
 
 from webserver.handlers.base import BaseHandler, auth_required
-from webserver.models import Book, UserDownload
+from webserver.models import Book, UserDownload, Database
 from webserver.settings import CONF
 
 logger = logging.getLogger(__name__)
 
-# 每日下载上限
-DAILY_DOWNLOAD_LIMIT = 10
+# 默认下载限速（KB/s），0 表示不限速
+DEFAULT_DOWNLOAD_SPEED_LIMIT = 500
+
+
+def get_download_limit() -> int:
+    """获取每日下载上限（从数据库配置读取）"""
+    try:
+        db = Database()
+        row = db.fetchone("SELECT value FROM system_settings WHERE key = 'download_limit'")
+        if row and row['value']:
+            return int(row['value'])
+    except (ValueError, TypeError):
+        pass
+    return 10  # 默认10次
+
+
+def get_download_speed_limit() -> int:
+    """获取下载限速（KB/s），0 表示不限速"""
+    try:
+        db = Database()
+        row = db.fetchone("SELECT value FROM system_settings WHERE key = 'download_speed_limit'")
+        if row and row['value']:
+            return int(row['value'])
+    except (ValueError, TypeError):
+        pass
+    return DEFAULT_DOWNLOAD_SPEED_LIMIT  # 默认 500KB/s
 
 
 class SearchHandler(BaseHandler):
@@ -95,11 +120,12 @@ class BookDownloadHandler(BaseHandler):
 
             # 2. 检查下载上限
             download_count = UserDownload.get_download_count(user.id)
-            if download_count >= DAILY_DOWNLOAD_LIMIT:
+            daily_limit = get_download_limit()
+            if download_count >= daily_limit:
                 self.set_status(403)
                 self.write_json({
                     "err": "download_limit_reached",
-                    "msg": f"今日下载次数已达上限（{DAILY_DOWNLOAD_LIMIT}次），请明天再试"
+                    "msg": f"今日下载次数已达上限（{daily_limit}次），请明天再试"
                 })
                 return
 
@@ -118,7 +144,7 @@ class BookDownloadHandler(BaseHandler):
             # 4. 记录下载
             UserDownload.record_download(user.id, book.id)
 
-            # 5. 返回文件
+            # 5. 返回文件（支持限速）
             filename = os.path.basename(book.file_path)
             encoded_filename = urllib.parse.quote(filename)
 
@@ -126,15 +152,28 @@ class BookDownloadHandler(BaseHandler):
             self.set_header('Content-Disposition', f"attachment; filename*=UTF-8''{encoded_filename}")
             self.set_header('Content-Length', str(book.file_size or os.path.getsize(book.file_path)))
 
+            # 获取限速配置
+            speed_limit = get_download_speed_limit()
+            chunk_size = 8192  # 8KB
+
             with open(book.file_path, 'rb') as f:
                 while True:
-                    chunk = f.read(8192)
+                    chunk = f.read(chunk_size)
                     if not chunk:
                         break
                     self.write(chunk)
+                    self.flush()
+
+                    # 限速处理
+                    if speed_limit > 0:
+                        # 计算发送时间，控制速率
+                        # speed_limit 单位 KB/s，chunk_size 单位 bytes
+                        expected_time = len(chunk) / (speed_limit * 1024)
+                        time.sleep(expected_time)
+
             self.finish()
 
-            logger.info(f"用户 {user.username} 下载书籍: {book.title} (ID: {book_id}), 今日第 {download_count + 1} 次")
+            logger.info(f"用户 {user.username} 下载书籍: {book.title} (ID: {book_id}), 今日第 {download_count + 1} 次, 限速: {speed_limit}KB/s")
 
         except Exception as e:
             logger.error(f"下载书籍失败: {e}")

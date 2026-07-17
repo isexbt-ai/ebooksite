@@ -4,12 +4,46 @@
 
 import json
 import logging
+import time
 import tornado.web
 from typing import Optional
 
 from webserver.models import User
 
 logger = logging.getLogger(__name__)
+
+# 登录失败限制：5 分钟内最多 5 次
+LOGIN_ATTEMPT_LIMIT = 5
+LOGIN_ATTEMPT_WINDOW = 300  # 5 分钟
+
+# 内存中的登录失败记录（IP -> {count, last_time}）
+_login_attempts: dict = {}
+
+
+def check_login_rate_limit(ip: str) -> bool:
+    """检查登录频率限制
+
+    Args:
+        ip: 客户端 IP
+
+    Returns:
+        True: 允许登录
+        False: 超过限制
+    """
+    now = time.time()
+    if ip in _login_attempts:
+        record = _login_attempts[ip]
+        if now - record['last_time'] > LOGIN_ATTEMPT_WINDOW:
+            # 超过时间窗口，重置
+            _login_attempts[ip] = {'count': 1, 'last_time': now}
+            return True
+        if record['count'] >= LOGIN_ATTEMPT_LIMIT:
+            return False
+        record['count'] += 1
+        record['last_time'] = now
+    else:
+        _login_attempts[ip] = {'count': 1, 'last_time': now}
+    return True
 
 
 class BaseHandler(tornado.web.RequestHandler):
@@ -19,10 +53,21 @@ class BaseHandler(tornado.web.RequestHandler):
         """设置默认安全响应头"""
         self.set_header("X-Frame-Options", "DENY")
         self.set_header("X-Content-Type-Options", "nosniff")
-        self.set_header("X-XSS-Protection", "1; mode=block")
+        # 移除 X-XSS-Protection（现代浏览器已弃用，CSP 替代）
         self.set_header("Referrer-Policy", "strict-origin-when-cross-origin")
-        self.set_header("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self';")
+        # 更严格的 CSP
+        self.set_header("Content-Security-Policy",
+                         "default-src 'self'; "
+                         "script-src 'self'; "
+                         "style-src 'self' 'unsafe-inline'; "
+                         "img-src 'self' data: https:; "
+                         "font-src 'self'; "
+                         "connect-src 'self'; "
+                         "frame-ancestors 'none'; "
+                         "base-uri 'self';")
         self.set_header("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+        # 添加额外的安全头
+        self.set_header("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
 
     def prepare(self):
         """请求预处理"""
@@ -97,13 +142,25 @@ class BaseHandler(tornado.web.RequestHandler):
 
         return None
 
-    def set_current_user(self, user_id: int):
-        """设置当前用户"""
-        self.set_secure_cookie("user_id", str(user_id), expires_days=7)
+    def set_current_user(self, user_id: int, remember: bool = False):
+        """设置当前用户
 
-    def set_current_admin(self, user_id: int):
-        """设置当前后台管理员"""
-        self.set_secure_cookie("admin_user_id", str(user_id), expires_days=7)
+        Args:
+            user_id: 用户ID
+            remember: 是否保持登录状态（True=30天，False=7天）
+        """
+        expires_days = 30 if remember else 7
+        self.set_secure_cookie("user_id", str(user_id), expires_days=expires_days)
+
+    def set_current_admin(self, user_id: int, remember: bool = False):
+        """设置当前后台管理员
+
+        Args:
+            user_id: 用户ID
+            remember: 是否保持登录状态（True=30天，False=7天）
+        """
+        expires_days = 30 if remember else 7
+        self.set_secure_cookie("admin_user_id", str(user_id), expires_days=expires_days)
 
     def clear_current_user(self):
         """清除当前用户"""

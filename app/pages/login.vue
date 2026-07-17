@@ -4,6 +4,7 @@ const authStore = useAuthStore()
 
 const username = ref('')
 const password = ref('')
+const remember = ref(false)
 const error = ref('')
 const loading = ref(false)
 
@@ -21,6 +22,7 @@ const login = async () => {
     const data = await post('/api/auth/login', {
       username: username.value,
       password: password.value,
+      remember: remember.value,
     })
 
     if (data.data) {
@@ -87,6 +89,15 @@ onMounted(() => {
                 variant="outlined"
                 class="mb-4"
                 required
+              />
+
+              <!-- 保持登录状态 -->
+              <v-checkbox
+                v-model="remember"
+                label="保持登录状态（30天）"
+                color="primary"
+                class="mb-4"
+                hide-details
               />
 
               <v-alert

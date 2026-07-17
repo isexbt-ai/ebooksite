@@ -87,6 +87,12 @@ class LoginHandler(BaseHandler):
             if not username or not password:
                 return self.write_error("invalid_params", "用户名和密码不能为空")
 
+            # 检查登录频率限制
+            client_ip = self.request.remote_ip
+            if not check_login_rate_limit(client_ip):
+                logger.warning(f"IP {client_ip} 登录频率过高")
+                return self.write_error("rate_limited", "登录次数过多，请5分钟后再试", 429)
+
             user = User.get_by_username(username)
             if not user:
                 return self.write_error("invalid_credentials", "用户名或密码错误")
@@ -101,7 +107,14 @@ class LoginHandler(BaseHandler):
                 return self.write_error("account_expired", "账号已过期，请续费")
 
             user.update_last_login()
-            self.set_current_user(user.id)
+
+            # 检查是否勾选"保持登录状态"
+            remember = data.get('remember', False)
+            self.set_current_user(user.id, remember=remember)
+
+            # 清除登录失败记录
+            if client_ip in _login_attempts:
+                del _login_attempts[client_ip]
 
             logger.info(f"用户 {username} 登录成功")
             return self.write_success({
