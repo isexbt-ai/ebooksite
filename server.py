@@ -79,12 +79,21 @@ def make_app():
 
     # 添加静态文件路由（如果目录存在）
     if os.path.exists(static_path):
+        nuxt_path = os.path.join(static_path, '_nuxt')
+
+        # 路由顺序很重要：
+        # 1. API 路由（最高优先级）
+        # 2. _nuxt 静态资源
+        # 3. 根路径 /
+        # 4. catch-all SPA 路由
+
         # _nuxt 静态资源服务
         app_routes.insert(0, (
             r"/_nuxt/(.*)",
             tornado.web.StaticFileHandler,
-            {"path": os.path.join(static_path, '_nuxt')}
+            {"path": nuxt_path}
         ))
+        logger.info(f"_nuxt 静态资源路径: {nuxt_path}, 存在: {os.path.exists(nuxt_path)}")
 
         # 根路径返回 index.html
         app_routes.insert(0, (r"/", IndexHandler))
@@ -94,6 +103,10 @@ def make_app():
     else:
         logger.warning(f"静态文件目录不存在: {static_path}")
         logger.warning("请运行: cd app && npm install && npm run build")
+
+    # 打印所有路由用于调试
+    for i, route in enumerate(app_routes):
+        logger.info(f"路由 {i}: {route[0]}")
 
     return tornado.web.Application(app_routes, **settings)
 
