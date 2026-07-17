@@ -76,6 +76,7 @@ class BaseHandler(tornado.web.RequestHandler):
     def _get_post_data(self) -> dict:
         """获取 POST 请求数据，自动兼容 form-data 和 JSON"""
         content_type = self.request.headers.get('Content-Type', '')
+        logger.info(f"Content-Type: {content_type}, body: {self.request.body[:200] if self.request.body else 'empty'}")
         if content_type.startswith('application/json'):
             try:
                 body = self.request.body
