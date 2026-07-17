@@ -26,18 +26,63 @@ from webserver.settings import CONF
 from webserver.handlers import routes
 
 
+class IndexHandler(tornado.web.RequestHandler):
+    """首页 Handler - 返回静态 index.html"""
+
+    def get(self):
+        """返回首页"""
+        index_path = os.path.join(BASE_DIR, 'app', '.output', 'public', 'index.html')
+        if os.path.exists(index_path):
+            with open(index_path, 'rb') as f:
+                self.set_header('Content-Type', 'text/html; charset=utf-8')
+                self.write(f.read())
+        else:
+            self.set_status(404)
+            self.write("index.html not found. Please build the frontend first.")
+
+
+class StaticFileHandler(tornado.web.StaticFileHandler):
+    """静态文件 Handler"""
+    pass
+
+
 def make_app():
     """创建 Tornado 应用"""
     settings = {
         'cookie_secret': CONF['cookie_secret'],
         'login_url': '/login',
         'debug': CONF.get('debug', False),
-        'static_path': os.path.join(BASE_DIR, 'app', '.output', 'public'),
-        'template_path': os.path.join(BASE_DIR, 'webserver', 'templates'),
         'xsrf_cookies': False,  # 禁用 CSRF，因为使用 API token 认证
     }
 
-    return tornado.web.Application(routes, **settings)
+    # 静态文件目录
+    static_path = os.path.join(BASE_DIR, 'app', '.output', 'public')
+
+    # 路由列表
+    app_routes = routes.copy()
+
+    # 添加 API 路由
+    # routes 已经包含 /api/* 路由
+
+    # 添加静态文件路由（如果目录存在）
+    if os.path.exists(static_path):
+        # 静态文件服务
+        app_routes.insert(0, (
+            r"/static/(.*)",
+            tornado.web.StaticFileHandler,
+            {"path": os.path.join(static_path, '_nuxt')}
+        ))
+
+        # 根路径返回 index.html
+        app_routes.insert(0, (r"/", IndexHandler))
+
+        # 其他前端路由也返回 index.html（SPA 模式）
+        app_routes.append((r"/.*", IndexHandler))
+    else:
+        logger.warning(f"静态文件目录不存在: {static_path}")
+        logger.warning("请运行: cd app && npm install && npm run build")
+
+    return tornado.web.Application(app_routes, **settings)
 
 
 def main():
