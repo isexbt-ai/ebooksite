@@ -202,9 +202,10 @@ def auth_required(func):
 def admin_required(func):
     """管理员验证装饰器（支持前台和后台登录）"""
     def wrapper(self, *args, **kwargs):
+        user = None
         # 先尝试前台登录
         user = self.get_current_user()
-        # 再尝试后台登录
+        # 如果前台未登录或不是管理员，尝试后台登录
         if not user or not user.admin:
             user = self.get_current_admin()
         if not user:
