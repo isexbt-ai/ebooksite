@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "nuxt build",
+    "build:low-mem": "NODE_OPTIONS='--max-old-space-size=768' nuxt build",
     "dev": "nuxt dev --port 3000 --host 127.0.0.1",
     "generate": "nuxt generate",
     "preview": "nuxt preview",

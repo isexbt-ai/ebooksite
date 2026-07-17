@@ -6,6 +6,11 @@ export default defineNuxtConfig({
   // SSR 配置
   ssr: true,
 
+  // 构建优化：降低内存占用（适配低内存服务器）
+  build: {
+    parallel: false,
+  },
+
   // Nitro 配置 - 预渲染静态页面
   nitro: {
     devProxy: {
@@ -14,9 +19,9 @@ export default defineNuxtConfig({
         changeOrigin: true,
       },
     },
-    // 预渲染关键页面
+    // 预渲染关键页面（减少预渲染路由以降低内存占用）
     prerender: {
-      routes: ['/', '/login', '/register'],
+      routes: ['/'],
     },
     // 启用 gzip 压缩
     compressPublicAssets: {

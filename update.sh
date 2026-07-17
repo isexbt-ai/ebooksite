@@ -93,9 +93,11 @@ build_frontend() {
         npm install
     fi
 
-    # 构建前端
+    # 构建前端 - 限制内存使用，适配低内存服务器
     log_info "构建前端产物..."
+    export NODE_OPTIONS="--max-old-space-size=768"
     npm run build
+    unset NODE_OPTIONS
 
     cd ..
     log_success "前端构建完成"
