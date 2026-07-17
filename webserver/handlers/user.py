@@ -1,14 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
-"""
-用户相关 Handler（设置、密码、书籍库）
-"""
+"""用户相关 Handler（设置、密码）"""
 
 import logging
-import os
 
 from webserver.handlers.base import BaseHandler, auth_required
-from webserver.models import User, DownloadLog, Database
+from webserver.models import User, Database
 
 logger = logging.getLogger(__name__)
 
@@ -72,80 +69,3 @@ class UserPasswordHandler(BaseHandler):
         except Exception as e:
             logger.error(f"修改密码失败: {e}")
             return self.write_error("password_failed", "修改密码失败")
-
-
-class BooksHandler(BaseHandler):
-    """本地书籍库 Handler"""
-
-    @auth_required
-    def get(self):
-        """获取本地书籍列表"""
-        try:
-            page = int(self.get_argument('page', '1'))
-            size = int(self.get_argument('size', '20'))
-            offset = (page - 1) * size
-
-            db = Database()
-
-            # 获取已完成的下载记录（即本地书籍）
-            rows = db.fetchall(
-                """SELECT * FROM download_logs
-                   WHERE status = 'completed' AND file_path IS NOT NULL
-                   ORDER BY completed_at DESC LIMIT ? OFFSET ?""",
-                (size, offset)
-            )
-            books = [DownloadLog(row).to_dict() for row in rows]
-
-            # 获取总数
-            total = db.fetchone(
-                """SELECT COUNT(*) as count FROM download_logs
-                   WHERE status = 'completed' AND file_path IS NOT NULL"""
-            )['count']
-
-            return self.write_success({
-                "total": total,
-                "items": books,
-                "page": page,
-                "size": size,
-            })
-
-        except Exception as e:
-            logger.error(f"获取本地书籍列表失败: {e}")
-            return self.write_error("books_failed", "获取本地书籍列表失败")
-
-
-class DeleteBookHandler(BaseHandler):
-    """删除本地书籍 Handler"""
-
-    @auth_required
-    def post(self, book_id):
-        """删除本地书籍"""
-        try:
-            book_id = int(book_id)
-            user = self.get_current_user()
-
-            log = DownloadLog.get_by_id(book_id)
-            if not log:
-                return self.write_error("not_found", "书籍记录不存在")
-
-            # 只能删除自己的书籍（管理员可以删除所有）
-            if log.user_id != user.id and not user.admin:
-                return self.write_error("forbidden", "无权删除此书籍")
-
-            # 删除文件
-            if log.file_path and os.path.exists(log.file_path):
-                try:
-                    os.remove(log.file_path)
-                except OSError as e:
-                    logger.warning(f"删除文件失败: {e}")
-
-            # 删除数据库记录
-            db = Database()
-            db.execute("DELETE FROM download_logs WHERE id = ?", (book_id,))
-
-            logger.info(f"用户 {user.username} 删除书籍: {log.book_title} (ID: {book_id})")
-            return self.write_success()
-
-        except Exception as e:
-            logger.error(f"删除书籍失败: {e}")
-            return self.write_error("delete_failed", "删除书籍失败")

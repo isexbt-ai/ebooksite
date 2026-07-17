@@ -1,7 +1,4 @@
 <script setup lang="ts">
-const { t } = useI18n()
-const authStore = useAuthStore()
-
 const username = ref('')
 const password = ref('')
 const error = ref('')
@@ -9,7 +6,7 @@ const loading = ref(false)
 
 const login = async () => {
   if (!username.value || !password.value) {
-    error.value = t('invalid_credentials')
+    error.value = '用户名和密码不能为空'
     return
   }
 
@@ -18,43 +15,36 @@ const login = async () => {
 
   try {
     const { post } = useApi()
-    const data = await post('/api/auth/login', {
+    const data = await post('/api/admin/auth/login', {
       username: username.value,
       password: password.value,
     })
 
     if (data.data) {
-      authStore.setUser(data.data)
-      authStore.setToken(data.data.token || '')
-
-      // 持久化存储
-      localStorage.setItem('auth_store', JSON.stringify({
+      // 存储后台登录状态
+      localStorage.setItem('admin_auth', JSON.stringify({
         user: data.data,
         token: data.data.token || ''
       }))
 
-      // 根据角色跳转
-      if (data.data.admin) {
-        navigateTo('/admin')
-      } else {
-        navigateTo('/')
-      }
+      navigateTo('/admin')
     }
   } catch (err: any) {
-    error.value = err.message || t('invalid_credentials')
+    error.value = err.message || '登录失败'
   } finally {
     loading.value = false
   }
 }
 
-// 如果已登录，跳转到首页
+// 如果已登录后台，跳转到后台首页
 onMounted(() => {
-  if (authStore.isLoggedIn) {
-    if (authStore.isAdmin) {
+  try {
+    const adminAuth = localStorage.getItem('admin_auth')
+    if (adminAuth) {
       navigateTo('/admin')
-    } else {
-      navigateTo('/')
     }
+  } catch {
+    // ignore
   }
 })
 </script>
@@ -65,14 +55,15 @@ onMounted(() => {
       <v-col cols="12" sm="8" md="6" lg="4">
         <v-card elevation="4">
           <v-card-title class="text-center text-h5 py-4">
-            {{ $t('login') }}
+            <v-icon icon="mdi-shield-account" size="32" color="primary" class="mb-2" />
+            <div>管理后台登录</div>
           </v-card-title>
 
           <v-card-text>
             <v-form @submit.prevent="login">
               <v-text-field
                 v-model="username"
-                :label="$t('username')"
+                label="管理员账号"
                 prepend-inner-icon="mdi-account"
                 variant="outlined"
                 class="mb-4"
@@ -81,7 +72,7 @@ onMounted(() => {
 
               <v-text-field
                 v-model="password"
-                :label="$t('password')"
+                label="密码"
                 prepend-inner-icon="mdi-lock"
                 type="password"
                 variant="outlined"
@@ -106,22 +97,18 @@ onMounted(() => {
                 :loading="loading"
                 :disabled="loading"
               >
-                {{ $t('login') }}
+                登录后台
               </v-btn>
             </v-form>
           </v-card-text>
 
           <v-card-actions class="justify-center pb-4">
-            <span class="text-body-2 text-medium-emphasis">
-              还没有账号？
-            </span>
             <v-btn
-              to="/register"
+              to="/"
               variant="text"
               color="primary"
-              class="ml-2"
             >
-              {{ $t('register') }}
+              返回首页
             </v-btn>
           </v-card-actions>
         </v-card>

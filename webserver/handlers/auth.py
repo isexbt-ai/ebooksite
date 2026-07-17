@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
-"""
-认证相关 Handler
-"""
+"""认证相关 Handler"""
 
 import logging
 import secrets
@@ -112,7 +110,7 @@ class LoginHandler(BaseHandler):
                 "name": user.name,
                 "admin": user.admin,
                 "expiry_date": user.expiry_date.isoformat() if user.expiry_date else None,
-                "token": str(user.id),  # 用于前端 Authorization header
+                "token": str(user.id),
             })
 
         except Exception as e:
@@ -127,6 +125,7 @@ class LogoutHandler(BaseHandler):
     def post(self):
         """用户登出"""
         self.clear_current_user()
+        self.clear_current_admin()
         return self.write_success()
 
 

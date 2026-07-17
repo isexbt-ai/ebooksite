@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
-"""
-基础 Handler 和工具函数
-"""
+"""基础 Handler 和工具函数"""
 
 import json
 import logging
@@ -74,13 +72,46 @@ class BaseHandler(tornado.web.RequestHandler):
 
         return None
 
+    def get_current_admin(self) -> Optional[User]:
+        """获取当前后台登录的管理员"""
+        # 1. 先尝试从 admin_user_id secure_cookie 获取
+        admin_user_id = self.get_secure_cookie("admin_user_id")
+        if admin_user_id:
+            try:
+                user = User.get_by_id(int(admin_user_id))
+                if user and user.admin:
+                    return user
+            except (ValueError, TypeError):
+                pass
+
+        # 2. 尝试从 Authorization header 获取 (Bearer token)
+        auth_header = self.request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            token = auth_header[7:].strip()
+            try:
+                user = User.get_by_id(int(token))
+                if user and user.admin:
+                    return user
+            except (ValueError, TypeError):
+                pass
+
+        return None
+
     def set_current_user(self, user_id: int):
         """设置当前用户"""
         self.set_secure_cookie("user_id", str(user_id), expires_days=7)
 
+    def set_current_admin(self, user_id: int):
+        """设置当前后台管理员"""
+        self.set_secure_cookie("admin_user_id", str(user_id), expires_days=7)
+
     def clear_current_user(self):
         """清除当前用户"""
         self.clear_cookie("user_id")
+
+    def clear_current_admin(self):
+        """清除当前后台管理员"""
+        self.clear_cookie("admin_user_id")
 
     def write_json(self, data: dict):
         """返回 JSON 响应"""
@@ -112,9 +143,13 @@ def auth_required(func):
 
 
 def admin_required(func):
-    """管理员验证装饰器"""
+    """管理员验证装饰器（支持前台和后台登录）"""
     def wrapper(self, *args, **kwargs):
+        # 先尝试前台登录
         user = self.get_current_user()
+        # 再尝试后台登录
+        if not user or not user.admin:
+            user = self.get_current_admin()
         if not user:
             self.write_error("unauthorized", "请先登录", 401)
             return

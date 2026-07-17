@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
-"""
-API 路由注册
-"""
+"""API 路由注册"""
 
 from webserver.handlers.auth import (
     RegisterHandler,
@@ -12,31 +10,25 @@ from webserver.handlers.auth import (
     RedeemHandler,
     GenerateCardsHandler,
 )
-from webserver.handlers.search import SearchHandler
-from webserver.handlers.download import DownloadHandler, DownloadStatusHandler, DownloadHistoryHandler
-from webserver.handlers.batch_download import (
-    SourceCategoriesHandler,
-    BatchDownloadHandler,
-    BatchDownloadStatusHandler,
-    BatchDownloadListHandler,
-    BatchDownloadStopHandler,
+from webserver.handlers.books import (
+    SearchHandler,
+    BookListHandler,
+    BookDetailHandler,
+    BookDownloadHandler,
 )
 from webserver.handlers.admin import (
+    AdminLoginHandler,
     AdminStatsHandler,
     AdminUsersHandler,
     AdminDeleteUserHandler,
     AdminCardsHandler,
-    AdminSourcesHandler,
-    AdminDeleteSourceHandler,
-    AdminToggleSourceHandler,
     AdminBooksHandler,
+    AdminScanBooksHandler,
     AdminDeleteBookHandler,
 )
 from webserver.handlers.user import (
     UserSettingsHandler,
     UserPasswordHandler,
-    BooksHandler,
-    DeleteBookHandler,
 )
 from webserver.handlers.settings import (
     BuyLinkHandler,
@@ -55,15 +47,11 @@ routes = [
     (r"/api/auth/me", MeHandler),
     (r"/api/auth/redeem", RedeemHandler),
 
-    # 搜索下载
-    (r"/api/search", SearchHandler),
-    (r"/api/download", DownloadHandler),
-    (r"/api/download/([0-9]+)/status", DownloadStatusHandler),
-    (r"/api/download/history", DownloadHistoryHandler),
-
-    # 本地书籍库
-    (r"/api/books", BooksHandler),
-    (r"/api/books/([0-9]+)/delete", DeleteBookHandler),
+    # 书籍搜索（公开）
+    (r"/api/books/search", SearchHandler),
+    (r"/api/books/download/([0-9]+)", BookDownloadHandler),
+    (r"/api/books", BookListHandler),
+    (r"/api/books/([0-9]+)", BookDetailHandler),
 
     # 用户设置
     (r"/api/user/settings", UserSettingsHandler),
@@ -75,27 +63,23 @@ routes = [
     # 用户反馈
     (r"/api/feedback", FeedbackHandler),
 
+    # 后台独立登录
+    (r"/api/admin/auth/login", AdminLoginHandler),
+
     # 管理员相关
     (r"/api/admin/cards/generate", GenerateCardsHandler),
     (r"/api/admin/stats", AdminStatsHandler),
     (r"/api/admin/users", AdminUsersHandler),
     (r"/api/admin/users/([0-9]+)/delete", AdminDeleteUserHandler),
     (r"/api/admin/cards", AdminCardsHandler),
-    (r"/api/admin/sources", AdminSourcesHandler),
-    (r"/api/admin/sources/([0-9]+)/delete", AdminDeleteSourceHandler),
-    (r"/api/admin/sources/([0-9]+)/toggle", AdminToggleSourceHandler),
     (r"/api/admin/books", AdminBooksHandler),
+    (r"/api/admin/books/scan", AdminScanBooksHandler),
     (r"/api/admin/books/([0-9]+)/delete", AdminDeleteBookHandler),
 
     # 管理员 - 系统设置
     (r"/api/admin/settings", AdminSettingsHandler),
 
-    # 批量下载
-    (r"/api/admin/sources/([0-9]+)/categories", SourceCategoriesHandler),
-    (r"/api/admin/batch-download", BatchDownloadHandler),
-    (r"/api/admin/batch-download/([0-9]+)/status", BatchDownloadStatusHandler),
-    (r"/api/admin/batch-download/tasks", BatchDownloadListHandler),
-    (r"/api/admin/batch-download/([0-9]+)/stop", BatchDownloadStopHandler),
+    # 管理员 - 反馈管理
     (r"/api/admin/feedbacks", AdminFeedbackListHandler),
     (r"/api/admin/feedbacks/([0-9]+)/delete", AdminFeedbackDeleteHandler),
 ]

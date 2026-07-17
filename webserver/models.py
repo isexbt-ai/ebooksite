@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
-"""
-数据库模型定义
-"""
+"""数据库模型定义"""
 
 import os
 import json
@@ -86,38 +84,27 @@ def init_database():
         )
     """)
 
-    # 书源配置表
+    # 书籍元数据表
     db.execute("""
-        CREATE TABLE IF NOT EXISTS book_sources (
+        CREATE TABLE IF NOT EXISTS books (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name VARCHAR(100) NOT NULL,
-            url TEXT NOT NULL,
-            type VARCHAR(20) DEFAULT 'opds',
-            enabled BOOLEAN DEFAULT TRUE,
-            config TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            title VARCHAR(500) NOT NULL,
+            author VARCHAR(200),
+            file_path TEXT NOT NULL,
+            file_size INTEGER,
+            file_format VARCHAR(10),
+            cover_path TEXT,
+            description TEXT,
+            tags TEXT,
+            category VARCHAR(100),
+            indexed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     """)
 
-    # 下载记录表
-    db.execute("""
-        CREATE TABLE IF NOT EXISTS download_logs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            book_title VARCHAR(500),
-            book_author VARCHAR(200),
-            source_id INTEGER,
-            source_url TEXT,
-            status VARCHAR(20) DEFAULT 'pending',
-            file_path TEXT,
-            file_size INTEGER,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            completed_at DATETIME,
-            FOREIGN KEY (user_id) REFERENCES users(id),
-            FOREIGN KEY (source_id) REFERENCES book_sources(id)
-        )
-    """)
+    # 为书名和作者添加索引，加速模糊查询
+    db.execute("CREATE INDEX IF NOT EXISTS idx_books_title ON books(title)")
+    db.execute("CREATE INDEX IF NOT EXISTS idx_books_author ON books(author)")
 
     # 系统设置表
     db.execute("""
@@ -142,40 +129,15 @@ def init_database():
         )
     """)
 
-    # 批量下载任务表
+    # 用户下载记录表
     db.execute("""
-        CREATE TABLE IF NOT EXISTS download_tasks (
+        CREATE TABLE IF NOT EXISTS user_downloads (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            source_id INTEGER NOT NULL,
-            source_name VARCHAR(100),
-            status VARCHAR(20) DEFAULT 'pending',
-            total_count INTEGER DEFAULT 0,
-            done_count INTEGER DEFAULT 0,
-            failed_count INTEGER DEFAULT 0,
-            skip_count INTEGER DEFAULT 0,
-            current_category VARCHAR(200),
-            current_page INTEGER DEFAULT 0,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            completed_at DATETIME,
-            FOREIGN KEY (source_id) REFERENCES book_sources(id)
-        )
-    """)
-
-    # 批量下载任务项表
-    db.execute("""
-        CREATE TABLE IF NOT EXISTS download_task_items (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            task_id INTEGER NOT NULL,
-            category VARCHAR(200),
-            book_title VARCHAR(500),
-            book_author VARCHAR(200),
-            source_url TEXT,
-            status VARCHAR(20) DEFAULT 'pending',
-            file_path TEXT,
-            error TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            completed_at DATETIME,
-            FOREIGN KEY (task_id) REFERENCES download_tasks(id)
+            user_id INTEGER NOT NULL,
+            book_id INTEGER NOT NULL,
+            downloaded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            FOREIGN KEY (book_id) REFERENCES books(id)
         )
     """)
 
@@ -466,130 +428,32 @@ class Card:
         }
 
 
-class BookSource:
-    """书源模型"""
+class Book:
+    """书籍模型"""
 
     def __init__(self, row: Optional[sqlite3.Row] = None):
         if row:
             self.id = row['id']
-            self.name = row['name']
-            self.url = row['url']
-            self.type = row['type']
-            self.enabled = bool(row['enabled'])
-            self.config = json.loads(row['config']) if row['config'] else {}
-
-            # 处理 SQLite 返回的字符串日期
-            created = row['created_at']
-            if created and isinstance(created, str):
-                try:
-                    self.created_at = datetime.fromisoformat(created)
-                except ValueError:
-                    self.created_at = None
-            else:
-                self.created_at = created
-
-            updated = row['updated_at']
-            if updated and isinstance(updated, str):
-                try:
-                    self.updated_at = datetime.fromisoformat(updated)
-                except ValueError:
-                    self.updated_at = None
-            else:
-                self.updated_at = updated
-        else:
-            self.id = None
-            self.name = ''
-            self.url = ''
-            self.type = 'opds'
-            self.enabled = True
-            self.config = {}
-            self.created_at = None
-            self.updated_at = None
-
-    @classmethod
-    def get_by_id(cls, source_id: int) -> Optional['BookSource']:
-        """根据 ID 获取书源"""
-        db = Database()
-        row = db.fetchone("SELECT * FROM book_sources WHERE id = ?", (source_id,))
-        return cls(row) if row else None
-
-    @classmethod
-    def get_all(cls, enabled_only: bool = False) -> List['BookSource']:
-        """获取所有书源"""
-        db = Database()
-        if enabled_only:
-            rows = db.fetchall("SELECT * FROM book_sources WHERE enabled = TRUE")
-        else:
-            rows = db.fetchall("SELECT * FROM book_sources")
-        return [cls(row) for row in rows]
-
-    @classmethod
-    def create(cls, name: str, url: str, type: str = 'opds', config: Dict = None) -> 'BookSource':
-        """创建书源"""
-        db = Database()
-        config_json = json.dumps(config) if config else '{}'
-        cursor = db.execute(
-            "INSERT INTO book_sources (name, url, type, config) VALUES (?, ?, ?, ?)",
-            (name, url, type, config_json)
-        )
-        return cls.get_by_id(cursor.lastrowid)
-
-    def update(self, **kwargs):
-        """更新书源"""
-        db = Database()
-        allowed_fields = ['name', 'url', 'type', 'enabled', 'config']
-        updates = []
-        params = []
-
-        for key, value in kwargs.items():
-            if key in allowed_fields:
-                if key == 'config':
-                    value = json.dumps(value)
-                updates.append(f"{key} = ?")
-                params.append(value)
-
-        if updates:
-            params.append(self.id)
-            db.execute(
-                f"UPDATE book_sources SET {', '.join(updates)}, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-                params
-            )
-
-    def delete(self):
-        """删除书源"""
-        db = Database()
-        db.execute("DELETE FROM book_sources WHERE id = ?", (self.id,))
-
-    def to_dict(self) -> Dict[str, Any]:
-        """转换为字典"""
-        return {
-            'id': self.id,
-            'name': self.name,
-            'url': self.url,
-            'type': self.type,
-            'enabled': self.enabled,
-            'config': self.config,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
-        }
-
-
-class DownloadLog:
-    """下载记录模型"""
-
-    def __init__(self, row: Optional[sqlite3.Row] = None):
-        if row:
-            self.id = row['id']
-            self.user_id = row['user_id']
-            self.book_title = row['book_title']
-            self.book_author = row['book_author']
-            self.source_id = row['source_id']
-            self.source_url = row['source_url']
-            self.status = row['status']
+            self.title = row['title']
+            self.author = row['author']
             self.file_path = row['file_path']
             self.file_size = row['file_size']
+            self.file_format = row['file_format']
+            self.cover_path = row['cover_path']
+            self.description = row['description']
+            self.tags = row['tags']
+            self.category = row['category']
 
             # 处理 SQLite 返回的字符串日期
+            indexed = row['indexed_at']
+            if indexed and isinstance(indexed, str):
+                try:
+                    self.indexed_at = datetime.fromisoformat(indexed)
+                except ValueError:
+                    self.indexed_at = None
+            else:
+                self.indexed_at = indexed
+
             created = row['created_at']
             if created and isinstance(created, str):
                 try:
@@ -598,341 +462,158 @@ class DownloadLog:
                     self.created_at = None
             else:
                 self.created_at = created
-
-            completed = row['completed_at']
-            if completed and isinstance(completed, str):
-                try:
-                    self.completed_at = datetime.fromisoformat(completed)
-                except ValueError:
-                    self.completed_at = None
-            else:
-                self.completed_at = completed
         else:
             self.id = None
-            self.user_id = 0
-            self.book_title = ''
-            self.book_author = ''
-            self.source_id = None
-            self.source_url = ''
-            self.status = 'pending'
+            self.title = ''
+            self.author = ''
             self.file_path = ''
             self.file_size = 0
+            self.file_format = ''
+            self.cover_path = ''
+            self.description = ''
+            self.tags = ''
+            self.category = ''
+            self.indexed_at = None
             self.created_at = None
-            self.completed_at = None
 
     @classmethod
-    def create(cls, user_id: int, book_title: str, book_author: str,
-               source_id: int = None, source_url: str = '') -> 'DownloadLog':
-        """创建下载记录"""
+    def get_by_id(cls, book_id: int) -> Optional['Book']:
+        """根据 ID 获取书籍"""
+        db = Database()
+        row = db.fetchone("SELECT * FROM books WHERE id = ?", (book_id,))
+        return cls(row) if row else None
+
+    @classmethod
+    def create(cls, title: str, author: str, file_path: str, file_size: int = 0,
+               file_format: str = '', description: str = '', category: str = '') -> 'Book':
+        """创建书籍记录"""
         db = Database()
         cursor = db.execute(
-            """INSERT INTO download_logs (user_id, book_title, book_author, source_id, source_url)
-               VALUES (?, ?, ?, ?, ?)""",
-            (user_id, book_title, book_author, source_id, source_url)
+            """INSERT INTO books (title, author, file_path, file_size, file_format, description, category)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (title, author, file_path, file_size, file_format, description, category)
         )
         return cls.get_by_id(cursor.lastrowid)
 
     @classmethod
-    def get_by_id(cls, log_id: int) -> Optional['DownloadLog']:
-        """根据 ID 获取下载记录"""
-        db = Database()
-        row = db.fetchone("SELECT * FROM download_logs WHERE id = ?", (log_id,))
-        return cls(row) if row else None
-
-    @classmethod
-    def get_by_user(cls, user_id: int, page: int = 1, size: int = 20) -> List['DownloadLog']:
-        """获取用户的下载记录"""
+    def get_all(cls, page: int = 1, size: int = 20) -> List['Book']:
+        """获取所有书籍（分页）"""
         db = Database()
         offset = (page - 1) * size
         rows = db.fetchall(
-            "SELECT * FROM download_logs WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?",
-            (user_id, size, offset)
+            "SELECT * FROM books ORDER BY title ASC LIMIT ? OFFSET ?",
+            (size, offset)
         )
         return [cls(row) for row in rows]
 
-    def update_status(self, status: str, file_path: str = None, file_size: int = None):
-        """更新下载状态"""
+    @classmethod
+    def search(cls, query: str, page: int = 1, size: int = 20) -> dict:
+        """模糊搜索书籍"""
         db = Database()
+        offset = (page - 1) * size
 
-        if status == 'completed':
-            db.execute(
-                """UPDATE download_logs SET status = ?, file_path = ?, file_size = ?,
-                   completed_at = CURRENT_TIMESTAMP WHERE id = ?""",
-                (status, file_path, file_size, self.id)
-            )
-        else:
-            db.execute(
-                "UPDATE download_logs SET status = ? WHERE id = ?",
-                (status, self.id)
-            )
+        # 构建模糊查询条件
+        keywords = query.split()
+        conditions = []
+        params = []
 
-        self.status = status
-        if file_path:
-            self.file_path = file_path
-        if file_size:
-            self.file_size = file_size
+        for kw in keywords:
+            conditions.append("(title LIKE ? OR author LIKE ?)")
+            params.extend([f"%{kw}%", f"%{kw}%"])
+
+        where_clause = " AND ".join(conditions) if conditions else "1=1"
+
+        # 查询总数
+        count_sql = f"SELECT COUNT(*) as count FROM books WHERE {where_clause}"
+        total_row = db.fetchone(count_sql, tuple(params))
+
+        # 查询分页数据
+        sql = f"""
+            SELECT * FROM books
+            WHERE {where_clause}
+            ORDER BY title ASC
+            LIMIT ? OFFSET ?
+        """
+        params.extend([size, offset])
+        rows = db.fetchall(sql, tuple(params))
+
+        books = [cls(row) for row in rows]
+
+        return {
+            "total": total_row['count'],
+            "items": [book.to_dict() for book in books],
+            "page": page,
+            "size": size,
+        }
+
+    @classmethod
+    def get_total_count(cls) -> int:
+        """获取书籍总数"""
+        db = Database()
+        row = db.fetchone("SELECT COUNT(*) as count FROM books")
+        return row['count']
+
+    @classmethod
+    def delete_by_id(cls, book_id: int):
+        """根据 ID 删除书籍"""
+        db = Database()
+        db.execute("DELETE FROM books WHERE id = ?", (book_id,))
+
+    @classmethod
+    def clear_all(cls):
+        """清空所有书籍"""
+        db = Database()
+        db.execute("DELETE FROM books")
 
     def to_dict(self) -> Dict[str, Any]:
         """转换为字典"""
         return {
             'id': self.id,
-            'user_id': self.user_id,
-            'book_title': self.book_title,
-            'book_author': self.book_author,
-            'source_id': self.source_id,
-            'source_url': self.source_url,
-            'status': self.status,
+            'title': self.title,
+            'author': self.author,
             'file_path': self.file_path,
             'file_size': self.file_size,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'completed_at': self.completed_at.isoformat() if self.completed_at else None,
-        }
-
-
-class DownloadTask:
-    """批量下载任务模型"""
-
-    def __init__(self, row: Optional[sqlite3.Row] = None):
-        if row:
-            self.id = row['id']
-            self.source_id = row['source_id']
-            self.source_name = row['source_name']
-            self.status = row['status']
-            self.total_count = row['total_count']
-            self.done_count = row['done_count']
-            self.failed_count = row['failed_count']
-            self.skip_count = row['skip_count']
-            self.current_category = row['current_category']
-            self.current_page = row['current_page']
-
-            created = row['created_at']
-            if created and isinstance(created, str):
-                try:
-                    self.created_at = datetime.fromisoformat(created)
-                except ValueError:
-                    self.created_at = None
-            else:
-                self.created_at = created
-
-            completed = row['completed_at']
-            if completed and isinstance(completed, str):
-                try:
-                    self.completed_at = datetime.fromisoformat(completed)
-                except ValueError:
-                    self.completed_at = None
-            else:
-                self.completed_at = completed
-        else:
-            self.id = None
-            self.source_id = 0
-            self.source_name = ''
-            self.status = 'pending'
-            self.total_count = 0
-            self.done_count = 0
-            self.failed_count = 0
-            self.skip_count = 0
-            self.current_category = None
-            self.current_page = 0
-            self.created_at = None
-            self.completed_at = None
-
-    @classmethod
-    def create(cls, source_id: int, source_name: str = '') -> 'DownloadTask':
-        """创建下载任务"""
-        db = Database()
-        cursor = db.execute(
-            """INSERT INTO download_tasks (source_id, source_name, status)
-               VALUES (?, ?, 'pending')""",
-            (source_id, source_name)
-        )
-        return cls.get_by_id(cursor.lastrowid)
-
-    @classmethod
-    def get_by_id(cls, task_id: int) -> Optional['DownloadTask']:
-        """根据 ID 获取任务"""
-        db = Database()
-        row = db.fetchone("SELECT * FROM download_tasks WHERE id = ?", (task_id,))
-        return cls(row) if row else None
-
-    @classmethod
-    def get_all(cls, limit: int = 50) -> List['DownloadTask']:
-        """获取所有任务"""
-        db = Database()
-        rows = db.fetchall(
-            "SELECT * FROM download_tasks ORDER BY created_at DESC LIMIT ?",
-            (limit,)
-        )
-        return [cls(row) for row in rows]
-
-    def update_status(self, status: str):
-        """更新任务状态"""
-        db = Database()
-        if status in ('completed', 'failed', 'stopped'):
-            db.execute(
-                "UPDATE download_tasks SET status = ?, completed_at = CURRENT_TIMESTAMP WHERE id = ?",
-                (status, self.id)
-            )
-        else:
-            db.execute(
-                "UPDATE download_tasks SET status = ? WHERE id = ?",
-                (status, self.id)
-            )
-        self.status = status
-
-    def update_progress(self, **kwargs):
-        """更新任务进度"""
-        db = Database()
-        allowed = ['total_count', 'done_count', 'failed_count', 'skip_count', 'current_category', 'current_page']
-        updates = []
-        params = []
-        for key, value in kwargs.items():
-            if key in allowed:
-                updates.append(f"{key} = ?")
-                params.append(value)
-        if updates:
-            params.append(self.id)
-            db.execute(
-                f"UPDATE download_tasks SET {', '.join(updates)} WHERE id = ?",
-                params
-            )
-            for key, value in kwargs.items():
-                setattr(self, key, value)
-
-    def to_dict(self) -> Dict[str, Any]:
-        """转换为字典"""
-        return {
-            'id': self.id,
-            'source_id': self.source_id,
-            'source_name': self.source_name,
-            'status': self.status,
-            'total_count': self.total_count,
-            'done_count': self.done_count,
-            'failed_count': self.failed_count,
-            'skip_count': self.skip_count,
-            'current_category': self.current_category,
-            'current_page': self.current_page,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'completed_at': self.completed_at.isoformat() if self.completed_at else None,
-        }
-
-
-class DownloadTaskItem:
-    """批量下载任务项模型"""
-
-    def __init__(self, row: Optional[sqlite3.Row] = None):
-        if row:
-            self.id = row['id']
-            self.task_id = row['task_id']
-            self.category = row['category']
-            self.book_title = row['book_title']
-            self.book_author = row['book_author']
-            self.source_url = row['source_url']
-            self.status = row['status']
-            self.file_path = row['file_path']
-            self.error = row['error']
-
-            created = row['created_at']
-            if created and isinstance(created, str):
-                try:
-                    self.created_at = datetime.fromisoformat(created)
-                except ValueError:
-                    self.created_at = None
-            else:
-                self.created_at = created
-
-            completed = row['completed_at']
-            if completed and isinstance(completed, str):
-                try:
-                    self.completed_at = datetime.fromisoformat(completed)
-                except ValueError:
-                    self.completed_at = None
-            else:
-                self.completed_at = completed
-        else:
-            self.id = None
-            self.task_id = 0
-            self.category = ''
-            self.book_title = ''
-            self.book_author = ''
-            self.source_url = ''
-            self.status = 'pending'
-            self.file_path = ''
-            self.error = ''
-            self.created_at = None
-            self.completed_at = None
-
-    @classmethod
-    def create(cls, task_id: int, category: str, book_title: str, book_author: str,
-               source_url: str = '') -> 'DownloadTaskItem':
-        """创建下载任务项"""
-        db = Database()
-        cursor = db.execute(
-            """INSERT INTO download_task_items (task_id, category, book_title, book_author, source_url)
-               VALUES (?, ?, ?, ?, ?)""",
-            (task_id, category, book_title, book_author, source_url)
-        )
-        return cls.get_by_id(cursor.lastrowid)
-
-    @classmethod
-    def get_by_id(cls, item_id: int) -> Optional['DownloadTaskItem']:
-        """根据 ID 获取任务项"""
-        db = Database()
-        row = db.fetchone("SELECT * FROM download_task_items WHERE id = ?", (item_id,))
-        return cls(row) if row else None
-
-    @classmethod
-    def get_by_task(cls, task_id: int) -> List['DownloadTaskItem']:
-        """获取任务的所有项目"""
-        db = Database()
-        rows = db.fetchall(
-            "SELECT * FROM download_task_items WHERE task_id = ? ORDER BY id",
-            (task_id,)
-        )
-        return [cls(row) for row in rows]
-
-    @classmethod
-    def get_by_task_and_status(cls, task_id: int, status: str) -> List['DownloadTaskItem']:
-        """获取指定状态的任务项"""
-        db = Database()
-        rows = db.fetchall(
-            "SELECT * FROM download_task_items WHERE task_id = ? AND status = ? ORDER BY id",
-            (task_id, status)
-        )
-        return [cls(row) for row in rows]
-
-    def update_status(self, status: str, file_path: str = None, error: str = None):
-        """更新任务项状态"""
-        db = Database()
-        if status in ('completed', 'failed', 'skipped'):
-            db.execute(
-                """UPDATE download_task_items
-                   SET status = ?, file_path = ?, error = ?, completed_at = CURRENT_TIMESTAMP
-                   WHERE id = ?""",
-                (status, file_path, error, self.id)
-            )
-        else:
-            db.execute(
-                "UPDATE download_task_items SET status = ? WHERE id = ?",
-                (status, self.id)
-            )
-        self.status = status
-        if file_path:
-            self.file_path = file_path
-        if error:
-            self.error = error
-
-    def to_dict(self) -> Dict[str, Any]:
-        """转换为字典"""
-        return {
-            'id': self.id,
-            'task_id': self.task_id,
+            'file_format': self.file_format,
+            'cover_path': self.cover_path,
+            'description': self.description,
+            'tags': self.tags,
             'category': self.category,
-            'book_title': self.book_title,
-            'book_author': self.book_author,
-            'source_url': self.source_url,
-            'status': self.status,
-            'file_path': self.file_path,
-            'error': self.error,
+            'indexed_at': self.indexed_at.isoformat() if self.indexed_at else None,
             'created_at': self.created_at.isoformat() if self.created_at else None,
-            'completed_at': self.completed_at.isoformat() if self.completed_at else None,
         }
+
+
+class UserDownload:
+    """用户下载记录模型"""
+
+    @classmethod
+    def record_download(cls, user_id: int, book_id: int):
+        """记录用户下载"""
+        db = Database()
+        db.execute(
+            "INSERT INTO user_downloads (user_id, book_id) VALUES (?, ?)",
+            (user_id, book_id)
+        )
+
+    @classmethod
+    def get_download_count(cls, user_id: int) -> int:
+        """获取用户今日下载次数"""
+        db = Database()
+        from datetime import datetime
+        today = datetime.now().strftime('%Y-%m-%d')
+        row = db.fetchone(
+            """SELECT COUNT(*) as count FROM user_downloads
+               WHERE user_id = ? AND date(downloaded_at) = date('now')""",
+            (user_id,)
+        )
+        return row['count'] if row else 0
+
+    @classmethod
+    def get_total_download_count(cls, user_id: int) -> int:
+        """获取用户总下载次数"""
+        db = Database()
+        row = db.fetchone(
+            "SELECT COUNT(*) as count FROM user_downloads WHERE user_id = ?",
+            (user_id,)
+        )
+        return row['count'] if row else 0

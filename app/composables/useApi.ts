@@ -27,17 +27,22 @@ export const useApi = () => {
   }
 
   const post = async (url: string, body: any = {}) => {
-    const params = new URLSearchParams()
-    Object.entries(body).forEach(([key, value]) => {
-      params.append(key, String(value))
-    })
+    // 根据 body 类型决定发送格式
+    // 如果 body 是 FormData，不设置 Content-Type，让浏览器自动设置
+    if (body instanceof FormData) {
+      return request(url, {
+        method: 'POST',
+        body,
+      })
+    }
 
+    // 默认发送 JSON
     return request(url, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Type': 'application/json',
       },
-      body: params,
+      body: JSON.stringify(body),
     })
   }
 

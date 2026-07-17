@@ -6,6 +6,7 @@ definePageMeta({
 const authStore = useAuthStore()
 
 const buyLink = ref('')
+const bookCountDisplay = ref('')
 const saving = ref(false)
 const saved = ref(false)
 
@@ -15,18 +16,22 @@ const fetchSettings = async () => {
     const data = await get('/api/admin/settings')
     if (data.data) {
       buyLink.value = data.data.buy_link || ''
+      bookCountDisplay.value = data.data.book_count_display || ''
     }
   } catch (err: any) {
     console.error('获取设置失败:', err)
   }
 }
 
-const saveBuyLink = async () => {
+const saveSettings = async () => {
   saving.value = true
   saved.value = false
   try {
     const { post } = useApi()
-    await post('/api/settings/buy_link', { url: buyLink.value })
+    await post('/api/settings/buy_link', {
+      url: buyLink.value,
+      book_count_display: bookCountDisplay.value,
+    })
     saved.value = true
     setTimeout(() => { saved.value = false }, 3000)
   } catch (err: any) {
@@ -62,25 +67,41 @@ onMounted(() => {
         <v-card elevation="2" class="mb-4">
           <v-card-title>
             <v-icon left>mdi-link</v-icon>
-            卡密购买链接
+            系统设置
           </v-card-title>
           <v-card-text>
             <p class="text-body-2 text-medium-emphasis mb-4">
-              设置后，用户点击首页"卡密购买"将跳转到此链接。
+              设置首页显示的内容。
             </p>
+
+            <!-- 购买链接 -->
             <v-text-field
               v-model="buyLink"
-              label="购买链接 URL"
+              label="卡密购买链接 URL"
               placeholder="https://example.com/buy"
               variant="outlined"
               prepend-inner-icon="mdi-link-variant"
               class="mb-4"
             />
+
+            <!-- 书籍数量显示 -->
+            <v-text-field
+              v-model="bookCountDisplay"
+              label="首页书籍数量显示文案"
+              placeholder="共收录 10000+ 本书籍"
+              variant="outlined"
+              prepend-inner-icon="mdi-numeric"
+              class="mb-4"
+            />
+            <p class="text-caption text-medium-emphasis mb-4">
+              设置后显示在首页搜索框下方，留空则不显示。
+            </p>
+
             <v-btn
               color="primary"
               :loading="saving"
               :disabled="saving"
-              @click="saveBuyLink"
+              @click="saveSettings"
             >
               <v-icon left>mdi-content-save</v-icon>
               保存

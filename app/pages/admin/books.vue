@@ -4,22 +4,18 @@ definePageMeta({
 })
 
 const { t } = useI18n()
-const authStore = useAuthStore()
 
 // 上传对话框
 const showUploadDialog = ref(false)
 const uploadFile = ref<File | null>(null)
 const uploadTitle = ref('')
 const uploadAuthor = ref('')
-const uploadPublisher = ref('')
 const uploading = ref(false)
 
-// 从书源下载对话框
-const showSourceDownloadDialog = ref(false)
-const sourceBooks = ref<any[]>([])
-const sourceSearchQuery = ref('')
-const sourceLoading = ref(false)
-const sourceDownloading = ref<number[]>([])
+// 扫描对话框
+const showScanDialog = ref(false)
+const scanning = ref(false)
+const scanResult = ref<any>(null)
 
 // 书籍列表
 const books = ref([])
@@ -72,7 +68,6 @@ const openUploadDialog = () => {
   uploadFile.value = null
   uploadTitle.value = ''
   uploadAuthor.value = ''
-  uploadPublisher.value = ''
 }
 
 // 处理文件选择
@@ -80,7 +75,6 @@ const handleFileSelect = (event: Event) => {
   const target = event.target as HTMLInputElement
   if (target.files && target.files.length > 0) {
     uploadFile.value = target.files[0]
-    // 自动从文件名提取书名
     const fileName = uploadFile.value.name.replace(/\.[^/.]+$/, '')
     if (!uploadTitle.value) {
       uploadTitle.value = fileName
@@ -105,7 +99,6 @@ const uploadBook = async () => {
     formData.append('file', uploadFile.value)
     formData.append('title', uploadTitle.value)
     formData.append('author', uploadAuthor.value)
-    formData.append('publisher', uploadPublisher.value)
 
     const { request } = useApi()
     await request('/api/admin/books', {
@@ -124,52 +117,22 @@ const uploadBook = async () => {
   }
 }
 
-// 打开从书源下载对话框
-const openSourceDownloadDialog = async () => {
-  showSourceDownloadDialog.value = true
-  sourceSearchQuery.value = ''
-  sourceBooks.value = []
-}
-
-// 从书源搜索书籍
-const searchSourceBooks = async () => {
-  if (!sourceSearchQuery.value.trim()) {
-    alert('请输入搜索关键词')
-    return
-  }
-
-  sourceLoading.value = true
-  try {
-    const { get } = useApi()
-    const data = await get(`/api/search?query=${encodeURIComponent(sourceSearchQuery.value)}`)
-    sourceBooks.value = data.data?.items || []
-  } catch (err: any) {
-    console.error('搜索失败:', err)
-    alert('搜索失败: ' + (err.message || '未知错误'))
-  } finally {
-    sourceLoading.value = false
-  }
-}
-
-// 从书源下载书籍
-const downloadFromSource = async (book: any) => {
-  if (sourceDownloading.value.includes(book.id)) return
-
-  sourceDownloading.value.push(book.id)
+// 扫描书籍目录
+const scanBooks = async () => {
+  scanning.value = true
   try {
     const { post } = useApi()
-    await post('/api/download', {
-      title: book.title,
-      author: book.author,
-      download_url: book.download_url,
-      source_id: book.source_id,
-    })
-    alert(`《${book.title}》下载任务已提交`)
+    const data = await post('/api/admin/books/scan', { full_rebuild: false })
+    if (data.data) {
+      scanResult.value = data.data
+      alert(data.data.message || '扫描完成')
+    }
+    fetchBooks()
   } catch (err: any) {
-    console.error('下载失败:', err)
-    alert('下载失败: ' + (err.message || '未知错误'))
+    console.error('扫描失败:', err)
+    alert('扫描失败: ' + (err.message || '未知错误'))
   } finally {
-    sourceDownloading.value = sourceDownloading.value.filter(id => id !== book.id)
+    scanning.value = false
   }
 }
 
@@ -234,10 +197,10 @@ onMounted(() => {
                 </v-btn>
                 <v-btn
                   color="info"
-                  prepend-icon="mdi-cloud-download"
-                  @click="openSourceDownloadDialog"
+                  prepend-icon="mdi-refresh"
+                  @click="scanBooks"
                 >
-                  从书源下载
+                  扫描目录
                 </v-btn>
               </v-col>
             </v-row>
@@ -249,23 +212,19 @@ onMounted(() => {
                 { title: 'ID', key: 'id' },
                 { title: '书名', key: 'title' },
                 { title: '作者', key: 'author' },
-                { title: '出版社', key: 'publisher' },
+                { title: '格式', key: 'file_format' },
                 { title: '操作', key: 'actions', sortable: false },
               ]"
               :loading="loading"
               class="elevation-1"
             >
-              <template #item.actions="{ item }">
-                <v-btn
-                  icon
-                  size="small"
-                  variant="text"
-                  color="primary"
-                  :to="`/book/${item.id}`"
-                >
-                  <v-icon>mdi-eye</v-icon>
-                </v-btn>
+              <template #item.file_format="{ item }">
+                <v-chip size="small" color="primary">
+                  {{ item.file_format?.toUpperCase() || 'UNKNOWN' }}
+                </v-chip>
+              </template>
 
+              <template #item.actions="{ item }">
                 <v-btn
                   icon
                   size="small"
@@ -307,11 +266,6 @@ onMounted(() => {
             variant="outlined"
             class="mb-4"
           />
-          <v-text-field
-            v-model="uploadPublisher"
-            label="出版社"
-            variant="outlined"
-          />
         </v-card-text>
         <v-card-actions>
           <v-btn
@@ -324,67 +278,6 @@ onMounted(() => {
             上传
           </v-btn>
           <v-btn @click="showUploadDialog = false">取消</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
-    <!-- 从书源下载对话框 -->
-    <v-dialog v-model="showSourceDownloadDialog" max-width="700">
-      <v-card>
-        <v-card-title>从书源下载</v-card-title>
-        <v-card-text>
-          <v-row class="mb-4">
-            <v-col cols="12">
-              <v-text-field
-                v-model="sourceSearchQuery"
-                label="搜索书名或作者"
-                prepend-inner-icon="mdi-magnify"
-                variant="outlined"
-                @keyup.enter="searchSourceBooks"
-              >
-                <template #append>
-                  <v-btn
-                    color="primary"
-                    :loading="sourceLoading"
-                    @click="searchSourceBooks"
-                  >
-                    搜索
-                  </v-btn>
-                </template>
-              </v-text-field>
-            </v-col>
-          </v-row>
-
-          <v-data-table
-            :items="sourceBooks"
-            :headers="[
-              { title: '书名', key: 'title' },
-              { title: '作者', key: 'author' },
-              { title: '来源', key: 'source' },
-              { title: '操作', key: 'actions', sortable: false },
-            ]"
-            :loading="sourceLoading"
-          >
-            <template #item.actions="{ item }">
-              <v-btn
-                color="primary"
-                size="small"
-                :loading="sourceDownloading.includes(item.id)"
-                :disabled="sourceDownloading.includes(item.id)"
-                @click="downloadFromSource(item)"
-              >
-                <v-icon left>mdi-download</v-icon>
-                下载
-              </v-btn>
-            </template>
-          </v-data-table>
-
-          <div v-if="!sourceLoading && sourceBooks.length === 0" class="text-center py-8 text-medium-emphasis">
-            请输入关键词搜索书籍
-          </div>
-        </v-card-text>
-        <v-card-actions>
-          <v-btn @click="showSourceDownloadDialog = false">关闭</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>

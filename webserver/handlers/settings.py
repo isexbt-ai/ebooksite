@@ -18,32 +18,44 @@ class BuyLinkHandler(BaseHandler):
     """卡密购买链接 Handler"""
 
     def get(self):
-        """获取购买链接（公开）"""
+        """获取购买链接和书籍数量显示（公开）"""
         try:
             db = Database()
             row = db.fetchone("SELECT value FROM system_settings WHERE key = 'buy_link'")
             url = row['value'] if row else ''
-            return self.write_success({"url": url})
+            # 获取书籍数量显示文案
+            count_row = db.fetchone("SELECT value FROM system_settings WHERE key = 'book_count_display'")
+            book_count_display = count_row['value'] if count_row else ''
+            return self.write_success({"url": url, "book_count_display": book_count_display})
         except Exception as e:
             logger.error(f"获取购买链接失败: {e}")
-            return self.write_success({"url": ""})
+            return self.write_success({"url": "", "book_count_display": ""})
 
     @admin_required
     def post(self):
-        """设置购买链接"""
+        """设置购买链接和书籍数量显示"""
         try:
             data = self._get_post_data()
             url = data.get('url', '').strip()
+            book_count_display = data.get('book_count_display', '').strip()
 
             db = Database()
+            # 保存购买链接
             existing = db.fetchone("SELECT id FROM system_settings WHERE key = 'buy_link'")
             if existing:
                 db.execute("UPDATE system_settings SET value = ? WHERE key = 'buy_link'", (url,))
             else:
                 db.execute("INSERT INTO system_settings (key, value) VALUES ('buy_link', ?)", (url,))
 
-            logger.info(f"管理员设置购买链接: {url}")
-            return self.write_success({"url": url})
+            # 保存书籍数量显示文案
+            existing2 = db.fetchone("SELECT id FROM system_settings WHERE key = 'book_count_display'")
+            if existing2:
+                db.execute("UPDATE system_settings SET value = ? WHERE key = 'book_count_display'", (book_count_display,))
+            else:
+                db.execute("INSERT INTO system_settings (key, value) VALUES ('book_count_display', ?)", (book_count_display,))
+
+            logger.info(f"管理员设置购买链接和书籍数量显示")
+            return self.write_success({"url": url, "book_count_display": book_count_display})
         except Exception as e:
             logger.error(f"设置购买链接失败: {e}")
             return self.write_error("save_failed", "保存失败")

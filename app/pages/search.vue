@@ -1,5 +1,4 @@
 <script setup lang="ts">
-const { t } = useI18n()
 const authStore = useAuthStore()
 
 // 搜索相关
@@ -8,16 +7,13 @@ const searchResults = ref([])
 const loading = ref(false)
 const error = ref('')
 const totalResults = ref(0)
+const page = ref(1)
+const size = 20
 
 // 下载对话框
 const showDownloadDialog = ref(false)
-const selectedBook = ref(null)
+const selectedBook = ref<any>(null)
 const downloading = ref(false)
-const downloadProgress = ref(0)
-const currentDownload = ref(null)
-
-// 登录提示对话框
-const showLoginPrompt = ref(false)
 
 // 获取URL参数中的搜索词
 onMounted(() => {
@@ -39,9 +35,11 @@ const search = async () => {
 
   try {
     const { get } = useApi()
-    const data = await get(`/api/search?query=${encodeURIComponent(searchQuery.value)}`)
-    searchResults.value = data.data?.items || []
-    totalResults.value = data.data?.total || searchResults.value.length
+    const data = await get(`/api/books/search?q=${encodeURIComponent(searchQuery.value)}&page=${page.value}&size=${size}`)
+    if (data.data) {
+      searchResults.value = data.data.items || []
+      totalResults.value = data.data.total || 0
+    }
   } catch (err: any) {
     error.value = err.message || '搜索失败'
     searchResults.value = []
@@ -51,75 +49,70 @@ const search = async () => {
   }
 }
 
+// 打开下载对话框
 const openDownloadDialog = (book: any) => {
-  if (!authStore.isLoggedIn) {
-    showLoginPrompt.value = true
-    return
-  }
   selectedBook.value = book
   showDownloadDialog.value = true
 }
 
+// 下载书籍
 const downloadBook = async () => {
   if (!selectedBook.value) return
 
   downloading.value = true
-  currentDownload.value = selectedBook.value
-  downloadProgress.value = 0
 
   try {
-    const { post } = useApi()
-    const data = await post('/api/download', {
-      title: selectedBook.value.title,
-      author: selectedBook.value.author,
-      download_url: selectedBook.value.download_url,
-      source_id: selectedBook.value.source_id,
+    const book = selectedBook.value
+    const response = await fetch(`/api/books/download/${book.id}`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('auth_store') ? JSON.parse(localStorage.getItem('auth_store') || '{}').token || '' : ''}`
+      }
     })
 
-    if (data.data) {
-      pollDownloadStatus(data.data.download_id)
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}))
+      if (data.err === 'unauthorized') {
+        error.value = '请先登录后再下载'
+        showDownloadDialog.value = false
+        downloading.value = false
+        return
+      }
+      if (data.err === 'download_limit_reached') {
+        error.value = data.msg || '今日下载次数已达上限'
+        showDownloadDialog.value = false
+        downloading.value = false
+        return
+      }
+      throw new Error(data.msg || '下载失败')
     }
+
+    // 获取文件名
+    const contentDisposition = response.headers.get('Content-Disposition')
+    let filename = `${book.title}.${book.file_format || 'epub'}`
+    if (contentDisposition) {
+      const match = contentDisposition.match(/filename\*?=[^']*'[^']*'([^;]+)/)
+      if (match) {
+        filename = decodeURIComponent(match[1])
+      }
+    }
+
+    // 下载文件
+    const blob = await response.blob()
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+
+    showDownloadDialog.value = false
   } catch (err: any) {
-    error.value = err.message || '下载失败'
+    error.value = '下载失败: ' + (err.message || '未知错误')
+  } finally {
     downloading.value = false
   }
-}
-
-const pollDownloadStatus = async (downloadId: number) => {
-  const interval = setInterval(async () => {
-    try {
-      const { get } = useApi()
-      const data = await get(`/api/download/${downloadId}/status`)
-
-      if (data.data) {
-        downloadProgress.value = data.data.progress || 0
-
-        if (data.data.status === 'completed') {
-          clearInterval(interval)
-          downloading.value = false
-          showDownloadDialog.value = false
-          selectedBook.value = null
-        } else if (data.data.status === 'failed') {
-          clearInterval(interval)
-          downloading.value = false
-          error.value = '下载失败'
-        }
-      }
-    } catch (err) {
-      clearInterval(interval)
-      downloading.value = false
-    }
-  }, 2000)
-}
-
-const navigateToLogin = () => {
-  showLoginPrompt.value = false
-  navigateTo('/login')
-}
-
-const navigateToRegister = () => {
-  showLoginPrompt.value = false
-  navigateTo('/register')
 }
 
 // 格式化文件大小
@@ -161,7 +154,7 @@ const goTo = (path: string) => {
 
     <!-- 搜索结果统计 -->
     <div v-if="searchResults.length > 0" class="results-header">
-      <span class="results-count">共找到 {{ totalResults }} 条结果</span>
+      <span class="results-count">共找到 {{ totalResults }} 本书籍</span>
     </div>
 
     <!-- 搜索结果列表 -->
@@ -173,17 +166,17 @@ const goTo = (path: string) => {
         @click="openDownloadDialog(book)"
       >
         <div class="result-icon">
-          <v-icon icon="mdi-file-document-outline" size="28" color="#2196F3" />
+          <v-icon icon="mdi-book-open-variant" size="28" color="#2196F3" />
         </div>
         <div class="result-info">
           <h3 class="result-title">{{ book.title }}</h3>
           <p class="result-author">{{ book.author || '未知作者' }}</p>
           <div class="result-meta">
-            <span class="result-source">{{ book.source || '网络书库' }}</span>
+            <span class="result-format">{{ book.file_format?.toUpperCase() || 'BOOK' }}</span>
             <span v-if="book.file_size" class="result-size">{{ formatFileSize(book.file_size) }}</span>
           </div>
         </div>
-        <v-icon icon="mdi-chevron-right" size="20" color="#CFD8DC" />
+        <v-icon icon="mdi-download" size="20" color="#90A4AE" class="download-icon" />
       </div>
     </div>
 
@@ -220,23 +213,18 @@ const goTo = (path: string) => {
     <!-- 下载对话框 -->
     <v-dialog v-model="showDownloadDialog" max-width="340" class="download-dialog">
       <v-card class="download-card">
-        <v-card-title class="dialog-title">获取直链</v-card-title>
+        <v-card-title class="dialog-title">下载书籍</v-card-title>
         <v-card-text class="dialog-content">
           <div class="book-preview">
             <v-icon icon="mdi-book-open-variant" size="48" color="#2196F3" />
             <div class="book-details">
               <h4>{{ selectedBook?.title }}</h4>
-              <p>{{ selectedBook?.author }}</p>
+              <p>{{ selectedBook?.author || '未知作者' }}</p>
+              <p v-if="selectedBook?.file_size" class="file-size">
+                {{ formatFileSize(selectedBook.file_size) }}
+              </p>
             </div>
           </div>
-          <v-progress-linear
-            v-if="downloading"
-            v-model="downloadProgress"
-            color="#2196F3"
-            class="mt-4"
-            height="6"
-            rounded
-          />
         </v-card-text>
         <v-card-actions class="dialog-actions">
           <v-btn
@@ -248,7 +236,7 @@ const goTo = (path: string) => {
             @click="downloadBook"
           >
             <v-icon left icon="mdi-download" size="18" />
-            {{ downloading ? '获取中...' : '获取直链' }}
+            {{ downloading ? '下载中...' : '立即下载' }}
           </v-btn>
           <v-btn
             variant="text"
@@ -258,20 +246,6 @@ const goTo = (path: string) => {
           >
             取消
           </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
-    <!-- 登录提示对话框 -->
-    <v-dialog v-model="showLoginPrompt" max-width="300">
-      <v-card class="login-prompt">
-        <v-card-title class="text-center text-h6 py-4">需要登录</v-card-title>
-        <v-card-text class="text-center">
-          请先登录或注册账号以下载书籍。
-        </v-card-text>
-        <v-card-actions class="justify-center pb-4">
-          <v-btn color="#2196F3" variant="elevated" @click="navigateToLogin">登录</v-btn>
-          <v-btn variant="text" @click="navigateToRegister">注册</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -417,7 +391,7 @@ const goTo = (path: string) => {
   align-items: center;
 }
 
-.result-source {
+.result-format {
   font-size: 11px;
   color: #2196F3;
   background: #E3F2FD;
@@ -428,6 +402,10 @@ const goTo = (path: string) => {
 .result-size {
   font-size: 11px;
   color: #90A4AE;
+}
+
+.download-icon {
+  flex-shrink: 0;
 }
 
 /* 空状态 */
@@ -536,6 +514,12 @@ const goTo = (path: string) => {
   margin: 0;
 }
 
+.file-size {
+  font-size: 12px;
+  color: #2196F3;
+  margin-top: 4px;
+}
+
 .dialog-actions {
   display: flex;
   flex-direction: column;
@@ -552,10 +536,5 @@ const goTo = (path: string) => {
 .cancel-btn {
   color: #90A4AE !important;
   font-weight: 500 !important;
-}
-
-/* 登录提示 */
-.login-prompt {
-  border-radius: 20px !important;
 }
 </style>

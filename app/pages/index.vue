@@ -1,11 +1,11 @@
 <script setup lang="ts">
-const { t } = useI18n()
 const authStore = useAuthStore()
 
 // 搜索相关
 const searchQuery = ref('')
 const loading = ref(false)
 const buyLink = ref('')
+const totalBooksDisplay = ref('')
 
 const doSearch = () => {
   if (!searchQuery.value.trim()) return
@@ -25,6 +25,21 @@ const fetchBuyLink = async () => {
   }
 }
 
+// 获取书籍数量显示文案（从后台配置读取）
+const fetchTotalBooksDisplay = async () => {
+  try {
+    const { get } = useApi()
+    const data = await get('/api/settings/buy_link')
+    // 从系统设置获取显示文案，key 为 'book_count_display'
+    // 如果没有设置，使用默认的空字符串（不显示）
+    if (data.data && data.data.book_count_display) {
+      totalBooksDisplay.value = data.data.book_count_display
+    }
+  } catch (e) {
+    // 忽略
+  }
+}
+
 const openBuyLink = () => {
   if (buyLink.value) {
     window.open(buyLink.value, '_blank')
@@ -32,9 +47,9 @@ const openBuyLink = () => {
 }
 
 onMounted(() => {
-  // 刷新用户信息以保持登录状态
   authStore.fetchUser()
   fetchBuyLink()
+  fetchTotalBooksDisplay()
 })
 </script>
 
@@ -46,7 +61,8 @@ onMounted(() => {
         <v-icon icon="mdi-book-open-page-variant" size="28" color="white" class="mr-2" />
         <span class="title-text">搜书机器人</span>
       </div>
-      <p class="search-subtitle">全网小说一键搜索</p>
+      <p class="search-subtitle">全网搜索</p>
+      <p v-if="totalBooksDisplay" class="book-count">{{ totalBooksDisplay }}</p>
     </div>
 
     <!-- 搜索框 -->
@@ -85,10 +101,10 @@ onMounted(() => {
     <!-- 宣传横幅 -->
     <div class="promo-banner">
       <div class="promo-content">
-        <v-icon icon="mdi-robot" size="32" color="white" class="promo-icon" />
+        <v-icon icon="mdi-book-multiple" size="32" color="white" class="promo-icon" />
         <div class="promo-text">
-          <h3>自助找书</h3>
-          <p>AI智能搜索，秒找全网资源</p>
+          <h3>全网搜索</h3>
+          <p>海量书籍，极速响应</p>
         </div>
       </div>
     </div>
@@ -123,6 +139,7 @@ onMounted(() => {
 .search-title { display: flex; align-items: center; justify-content: center; margin-bottom: 8px; }
 .title-text { font-size: 24px; font-weight: 700; color: white; }
 .search-subtitle { font-size: 14px; color: rgba(255,255,255,0.8); margin: 0; }
+.book-count { font-size: 13px; color: rgba(255,255,255,0.7); margin: 8px 0 0; }
 .search-box { padding: 0 20px; margin-top: -16px; }
 .search-input-wrapper {
   display: flex; align-items: center; background: white;

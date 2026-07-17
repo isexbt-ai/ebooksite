@@ -11,7 +11,6 @@ const stats = ref({
   totalUsers: 0,
   totalBooks: 0,
   totalCards: 0,
-  totalDownloads: 0,
 })
 
 // 获取统计数据
@@ -36,7 +35,7 @@ onMounted(() => {
   <v-container fluid>
     <v-row>
       <!-- 统计卡片 -->
-      <v-col cols="12" sm="6" md="3">
+      <v-col cols="12" sm="6" md="4">
         <v-card elevation="2" color="primary" dark>
           <v-card-item>
             <v-card-title class="text-h4">
@@ -47,7 +46,7 @@ onMounted(() => {
         </v-card>
       </v-col>
 
-      <v-col cols="12" sm="6" md="3">
+      <v-col cols="12" sm="6" md="4">
         <v-card elevation="2" color="success" dark>
           <v-card-item>
             <v-card-title class="text-h4">
@@ -58,24 +57,13 @@ onMounted(() => {
         </v-card>
       </v-col>
 
-      <v-col cols="12" sm="6" md="3">
+      <v-col cols="12" sm="6" md="4">
         <v-card elevation="2" color="warning" dark>
           <v-card-item>
             <v-card-title class="text-h4">
               {{ stats.totalCards }}
             </v-card-title>
             <v-card-subtitle>卡密总数</v-card-subtitle>
-          </v-card-item>
-        </v-card>
-      </v-col>
-
-      <v-col cols="12" sm="6" md="3">
-        <v-card elevation="2" color="info" dark>
-          <v-card-item>
-            <v-card-title class="text-h4">
-              {{ stats.totalDownloads }}
-            </v-card-title>
-            <v-card-subtitle>下载总数</v-card-subtitle>
           </v-card-item>
         </v-card>
       </v-col>
@@ -101,7 +89,7 @@ onMounted(() => {
           <v-card-title>快捷操作</v-card-title>
           <v-card-text>
             <v-row>
-              <v-col cols="12" sm="6" md="3">
+              <v-col cols="12" sm="6" md="4">
                 <v-btn
                   to="/admin/cards"
                   color="primary"
@@ -113,7 +101,7 @@ onMounted(() => {
                 </v-btn>
               </v-col>
 
-              <v-col cols="12" sm="6" md="3">
+              <v-col cols="12" sm="6" md="4">
                 <v-btn
                   to="/admin/users"
                   color="success"
@@ -125,19 +113,19 @@ onMounted(() => {
                 </v-btn>
               </v-col>
 
-              <v-col cols="12" sm="6" md="3">
+              <v-col cols="12" sm="6" md="4">
                 <v-btn
-                  to="/admin/sources"
-                  color="info"
+                  to="/admin/books"
+                  color="warning"
                   size="large"
                   block
                 >
-                  <v-icon left>mdi-source-branch</v-icon>
-                  {{ $t('source_management') }}
+                  <v-icon left>mdi-book</v-icon>
+                  {{ $t('book_management') }}
                 </v-btn>
               </v-col>
 
-              <v-col cols="12" sm="6" md="3">
+              <v-col cols="12" sm="6" md="4">
                 <v-btn
                   to="/admin/feedbacks"
                   color="purple"
@@ -149,7 +137,7 @@ onMounted(() => {
                 </v-btn>
               </v-col>
 
-              <v-col cols="12" sm="6" md="3">
+              <v-col cols="12" sm="6" md="4">
                 <v-btn
                   to="/admin/settings"
                   color="teal"
@@ -158,18 +146,6 @@ onMounted(() => {
                 >
                   <v-icon left>mdi-cog</v-icon>
                   系统设置
-                </v-btn>
-              </v-col>
-
-              <v-col cols="12" sm="6" md="3">
-                <v-btn
-                  to="/admin/books"
-                  color="warning"
-                  size="large"
-                  block
-                >
-                  <v-icon left>mdi-book</v-icon>
-                  {{ $t('book_management') }}
                 </v-btn>
               </v-col>
             </v-row>
