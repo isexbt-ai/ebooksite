@@ -1,70 +1,149 @@
-# 1Panel Docker Compose 部署方案
+# 搜书机器人 - 1Panel 部署指南
 
-## 快速部署步骤
+## 部署方式：1Panel 面板直接上传代码
 
-### 1. 准备代码
+### 1. 打包代码
 
-在服务器上执行：
+在本地执行：
 
 ```bash
-# 克隆代码
-git clone https://github.com/isexbt-ai/ebooksite.git /opt/ebooksite
-cd /opt/ebooksite
-
-# 构建并启动
-docker-compose up -d
+cd /home/isecbt/work/搜书机器人
+zip -r booksite.zip backend/ frontend/ data/ 1panel-deploy.md
 ```
 
-### 2. 1Panel 中配置
+### 2. 上传到服务器
 
-**进入 1Panel → 容器 → 编排 → 创建编排**
+**1Panel → 文件 → 上传**
 
-- **名称**：`ebooksite`
-- **路径**：`/opt/ebooksite`
-- **Compose 文件**：`docker-compose.yml`
+- 上传到 `/opt/booksite/`
+- 解压：`unzip booksite.zip`
 
-点击**创建并启动**。
+### 3. 创建 PHP 网站
 
-### 3. 配置反向代理
+**1Panel → 网站 → 创建网站 → 运行环境**
 
-**进入 1Panel → 网站 → 创建网站 → 反向代理**
+| 配置项 | 值 |
+|--------|-----|
+| 域名 | `your-domain.com` |
+| 根目录 | `/opt/booksite/backend/public` |
+| PHP 版本 | `8.1+` |
+| 运行方式 | `PHP-FPM` |
 
-- **域名**：`your-domain.com`
-- **代理地址**：`http://127.0.0.1:8080`
+### 4. 配置伪静态
 
-点击**保存**，然后**申请 HTTPS 证书**。
+**1Panel → 网站 → 设置 → 伪静态**
 
-### 4. 完成
+```nginx
+location / {
+    try_files $uri $uri/ /index.php?$query_string;
+}
 
-访问 `https://your-domain.com` 即可。
+location ~ \\.php$ {
+    fastcgi_pass unix:/tmp/php-cgi-81.sock;
+    fastcgi_index index.php;
+    fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+    include fastcgi_params;
+}
+```
+
+### 5. 配置 HTTPS
+
+**1Panel → 网站 → 设置 → HTTPS → 申请证书**
+
+---
+
+## 目录结构
+
+```
+/opt/booksite/
+├── backend/           # Laravel 后端（已包含依赖和构建产物）
+│   ├── app/
+│   ├── bootstrap/
+│   ├── config/
+│   ├── database/
+│   ├── public/          # ← Web 根目录指向这里
+│   │   ├── index.php
+│   │   ├── index.html     # ← 前端构建产物
+│   │   └── assets/        # ← 前端资源
+│   ├── routes/
+│   ├── storage/
+│   ├── vendor/          # ← PHP 依赖（已安装）
+│   └── ...
+├── frontend/          # Vue 3 前端源码（可选，已构建到 backend/public）
+├── data/              # SQLite 数据库和上传文件
+│   ├── books.db         # ← 数据库（已创建）
+│   └── books/
+└── 1panel-deploy.md   # 本文件
+```
 
 ---
 
 ## 环境变量
 
-| 变量 | 说明 | 默认值 |
-|------|------|--------|
-| `SECRET_KEY` | Cookie 加密密钥 | `your-secret-key-here-change-this` |
-| `ADMIN_USERNAME` | 管理员账号 | `admin` |
-| `ADMIN_PASSWORD` | 管理员密码 | `admin123` |
-| `PORT` | 服务端口 | `8080` |
+编辑 `/opt/booksite/backend/.env`：
+
+```env
+APP_NAME=搜书机器人
+APP_ENV=production
+APP_KEY=base64:xxx
+APP_DEBUG=false
+APP_URL=https://your-domain.com
+
+DB_CONNECTION=sqlite
+DB_DATABASE=/opt/booksite/data/books.db
+
+SANCTUM_STATEFUL_DOMAINS=your-domain.com
+```
 
 ---
 
-## 数据持久化
+## 数据备份
 
-`data/` 目录挂载到容器内 `/app/data`，包含：
-- `books.db` - SQLite 数据库
-- `books/` - 书籍文件
-- `covers/` - 封面图片
-
----
-
-## 更新部署
+创建 `/opt/booksite/backup.sh`：
 
 ```bash
-cd /opt/ebooksite
-git pull origin main
-docker-compose down
-docker-compose up -d --build
+#!/bin/bash
+
+BACKUP_DIR="/opt/backups/booksite"
+DATE=$(date +%Y%m%d_%H%M%S)
+
+mkdir -p $BACKUP_DIR
+
+# 备份数据库
+cp /opt/booksite/data/books.db $BACKUP_DIR/books_${DATE}.db
+
+# 备份书籍文件
+tar -czf $BACKUP_DIR/books_${DATE}.tar.gz -C /opt/booksite data/books/
+
+# 保留最近 7 天
+find $BACKUP_DIR -name "*.db" -mtime +7 -delete
+find $BACKUP_DIR -name "*.tar.gz" -mtime +7 -delete
+
+echo "备份完成: $DATE"
+```
+
+---
+
+## 常见问题
+
+### 1. SQLite 写入权限
+
+```bash
+chmod 777 /opt/booksite/data
+```
+
+### 2. 前端路由 404
+
+确保伪静态配置正确，所有路由指向 `index.php`。
+
+### 3. 跨域问题
+
+确保 `SANCTUM_STATEFUL_DOMAINS` 配置正确。
+
+### 4. 文件上传大小
+
+在 PHP 配置中调整：
+```ini
+upload_max_filesize = 100M
+post_max_size = 100M
 ```
