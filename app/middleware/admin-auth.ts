@@ -1,5 +1,5 @@
 // 后台页面登录守卫：未登录跳转到后台登录页
-export default defineNuxtRouteMiddleware((to) => {
+export default defineNuxtRouteMiddleware(async (to) => {
   // 只拦截 /admin 开头的路由，但排除 /admin/login
   if (!to.path.startsWith('/admin') || to.path === '/admin/login') {
     return
