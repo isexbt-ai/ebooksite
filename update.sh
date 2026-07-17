@@ -188,7 +188,8 @@ main() {
     if [ -f "docker-compose.yml" ]; then
         log_info "正在重启 Docker 服务..."
         docker-compose down
-        docker-compose up -d --build
+        docker-compose build --no-cache
+        docker-compose up -d
         log_success "服务已重启"
     else
         log_warn "未找到 docker-compose.yml，跳过 Docker 重启"
