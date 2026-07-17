@@ -41,7 +41,13 @@ onMounted(() => {
   try {
     const adminAuth = localStorage.getItem('admin_auth')
     if (adminAuth) {
-      navigateTo('/admin')
+      const parsed = JSON.parse(adminAuth)
+      if (parsed.user && parsed.token) {
+        navigateTo('/admin')
+      } else {
+        // 清除无效的登录状态
+        localStorage.removeItem('admin_auth')
+      }
     }
   } catch {
     // ignore
