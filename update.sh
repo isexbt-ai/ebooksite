@@ -17,6 +17,7 @@ NC='\033[0m' # No Color
 PROJECT_DIR="/opt/ebooksite"
 PROJECT_NAME="ebooksite"
 GIT_BRANCH="main"
+ENV_FILE=".env"
 
 # 日志函数
 log_info() {
@@ -35,12 +36,50 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
+# 生成随机密钥
+generate_secret_key() {
+    if command -v openssl &> /dev/null; then
+        openssl rand -hex 32
+    else
+        python3 -c "import secrets; print(secrets.token_hex(32))"
+    fi
+}
+
 # 检查命令是否存在
 check_command() {
     if ! command -v "$1" &> /dev/null; then
         log_error "$1 未安装"
         exit 1
     fi
+}
+
+# 生成 .env 文件
+generate_env_file() {
+    if [ -f "$ENV_FILE" ]; then
+        log_info ".env 文件已存在，跳过生成"
+        return
+    fi
+
+    log_info "首次运行，生成 .env 配置文件..."
+
+    SECRET_KEY=$(generate_secret_key)
+
+    cat > "$ENV_FILE" << EOF
+# 搜书机器人环境配置
+# 首次运行自动生成，请勿删除
+
+# 安全密钥（自动生成）
+SECRET_KEY=${SECRET_KEY}
+
+# 管理员账号（建议修改）
+ADMIN_USERNAME=admin
+
+# 管理员密码（强烈建议修改）
+ADMIN_PASSWORD=admin123
+EOF
+
+    log_success ".env 文件已生成"
+    log_warn "请编辑 .env 文件修改管理员密码！"
 }
 
 # 主函数
@@ -70,8 +109,11 @@ main() {
         exit 1
     fi
 
+    # 生成 .env 文件（首次运行）
+    generate_env_file
+
     # 获取当前版本
-    CURRENT_COMMIT=$(git rev-parse --short HEAD)
+    CURRENT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
     log_info "当前版本: $CURRENT_COMMIT"
 
     # 拉取最新代码
@@ -84,6 +126,14 @@ main() {
 
     if [ "$LOCAL" = "$REMOTE" ]; then
         log_success "已经是最新版本，无需更新"
+
+        # 即使没有更新，也检查容器是否在运行
+        if ! docker ps | grep -q "$PROJECT_NAME"; then
+            log_info "容器未运行，启动服务..."
+            docker-compose up -d
+            log_success "服务已启动"
+        fi
+
         exit 0
     fi
 
@@ -98,7 +148,7 @@ main() {
     git log --oneline "$CURRENT_COMMIT..$NEW_COMMIT" | head -20
     echo ""
 
-    # 检查是否需要重新构建
+    # 重启 Docker 服务
     if [ -f "docker-compose.yml" ]; then
         log_info "正在重启 Docker 服务..."
         docker-compose down

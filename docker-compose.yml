@@ -12,6 +12,6 @@ services:
     environment:
       - TZ=Asia/Shanghai
       - PORT=8080
-      - SECRET_KEY=${SECRET_KEY:-your-secret-key-here-change-this}
+      - SECRET_KEY=${SECRET_KEY}
       - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
