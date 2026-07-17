@@ -67,7 +67,7 @@ class AdminLoginHandler(BaseHandler):
                 return self.write_error("forbidden", "需要管理员权限")
 
             # 设置后台专用 cookie
-            self.set_secure_cookie("admin_user_id", str(user.id), expires_days=7)
+            self.set_current_admin(user.id)
 
             logger.info(f"管理员 {username} 登录后台")
             return self.write_success({
