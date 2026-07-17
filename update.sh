@@ -96,8 +96,26 @@ build_frontend() {
     # 构建前端 - 限制内存使用，适配低内存服务器
     log_info "构建前端产物..."
     export NODE_OPTIONS="--max-old-space-size=768"
-    npm run build
+    if ! npm run build; then
+        log_error "前端构建失败！"
+        unset NODE_OPTIONS
+        cd ..
+        exit 1
+    fi
     unset NODE_OPTIONS
+
+    # 验证构建产物
+    if [ ! -d ".output/public" ]; then
+        log_error "构建产物目录不存在: app/.output/public"
+        cd ..
+        exit 1
+    fi
+
+    if [ ! -f ".output/public/index.html" ]; then
+        log_error "构建产物不完整，缺少 index.html"
+        cd ..
+        exit 1
+    fi
 
     cd ..
     log_success "前端构建完成"
