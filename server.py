@@ -66,9 +66,9 @@ def make_app():
 
     # 添加静态文件路由（如果目录存在）
     if os.path.exists(static_path):
-        # 静态文件服务
+        # _nuxt 静态资源服务
         app_routes.insert(0, (
-            r"/static/(.*)",
+            r"/_nuxt/(.*)",
             tornado.web.StaticFileHandler,
             {"path": os.path.join(static_path, '_nuxt')}
         ))
