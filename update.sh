@@ -82,6 +82,25 @@ EOF
     log_warn "请编辑 .env 文件修改管理员密码！"
 }
 
+# 构建前端
+build_frontend() {
+    log_info "正在构建前端..."
+    cd app
+
+    # 检查 node_modules 是否存在
+    if [ ! -d "node_modules" ]; then
+        log_info "安装前端依赖..."
+        npm install
+    fi
+
+    # 构建前端
+    log_info "构建前端产物..."
+    npm run build
+
+    cd ..
+    log_success "前端构建完成"
+}
+
 # 主函数
 main() {
     log_info "========================================"
@@ -147,6 +166,11 @@ main() {
     log_info "更新日志:"
     git log --oneline "$CURRENT_COMMIT..$NEW_COMMIT" | head -20
     echo ""
+
+    # 构建前端（在宿主机上）
+    if [ -d "app" ]; then
+        build_frontend
+    fi
 
     # 重启 Docker 服务
     if [ -f "docker-compose.yml" ]; then
