@@ -27,11 +27,24 @@ from webserver.handlers import routes
 
 
 class IndexHandler(tornado.web.RequestHandler):
-    """首页 Handler - 返回静态 index.html"""
+    """SPA Handler - 返回对应路径的预渲染 HTML，找不到则回退到首页"""
 
     def get(self):
-        """返回首页"""
-        index_path = os.path.join(BASE_DIR, 'app', '.output', 'public', 'index.html')
+        """根据请求路径返回对应的预渲染 HTML"""
+        request_path = self.request.path.lstrip('/')
+        static_path = os.path.join(BASE_DIR, 'app', '.output', 'public')
+
+        # 尝试返回对应路径的预渲染 HTML（如 /login → login/index.html）
+        if request_path:
+            page_html = os.path.join(static_path, request_path, 'index.html')
+            if os.path.exists(page_html):
+                with open(page_html, 'rb') as f:
+                    self.set_header('Content-Type', 'text/html; charset=utf-8')
+                    self.write(f.read())
+                    return
+
+        # 回退到首页
+        index_path = os.path.join(static_path, 'index.html')
         if os.path.exists(index_path):
             with open(index_path, 'rb') as f:
                 self.set_header('Content-Type', 'text/html; charset=utf-8')
