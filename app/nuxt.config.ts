@@ -19,9 +19,9 @@ export default defineNuxtConfig({
         changeOrigin: true,
       },
     },
-    // 预渲染关键页面（减少预渲染路由以降低内存占用）
+    // 预渲染关键页面
     prerender: {
-      routes: ['/'],
+      routes: ['/', '/login', '/register', '/search', '/settings', '/feedback', '/admin', '/admin/login', '/admin/users', '/admin/cards', '/admin/books', '/admin/settings', '/admin/feedbacks'],
     },
     // 启用 gzip 压缩
     compressPublicAssets: {
