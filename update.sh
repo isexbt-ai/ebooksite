@@ -160,17 +160,9 @@ main() {
 
     log_info "发现新版本，开始更新..."
 
-    # 保存本地修改（如果有）
-    if git diff --quiet; then
-        log_info "工作区干净，直接拉取代码..."
-        git pull origin "$GIT_BRANCH"
-    else
-        log_warn "检测到本地修改，自动 stash..."
-        git stash
-        git pull origin "$GIT_BRANCH"
-        log_info "尝试恢复本地修改..."
-        git stash pop || log_warn "本地修改恢复失败，已丢弃"
-    fi
+    # 直接覆盖本地代码
+    log_info "拉取最新代码（覆盖本地修改）..."
+    git reset --hard "origin/$GIT_BRANCH"
 
     NEW_COMMIT=$(git rev-parse --short HEAD)
     log_success "代码已更新到: $NEW_COMMIT"
