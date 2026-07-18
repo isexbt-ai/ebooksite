@@ -57,80 +57,371 @@ onMounted(() => {
 
 <template>
   <div class="settings-page">
-    <h1>设置</h1>
+    <!-- 背景装饰 -->
+    <div class="bg-decoration">
+      <div class="bg-orb orb-1"></div>
+      <div class="bg-orb orb-2"></div>
+    </div>
 
-    <div v-if="authStore.isLoggedIn" class="settings-content">
-      <!-- 用户信息 -->
-      <div class="user-info">
-        <div class="avatar">👤</div>
-        <div class="info">
-          <h3>{{ authStore.user?.username }}</h3>
-          <p>有效期至: {{ authStore.user?.expiry_date || '永久' }}</p>
-        </div>
+    <div class="settings-container">
+      <!-- 头部 -->
+      <div class="settings-header">
+        <h1>⚙️ 设置</h1>
+        <p class="subtitle">管理您的账户</p>
       </div>
 
-      <!-- 修改密码 -->
-      <div class="section">
-        <h3>修改密码</h3>
-        <div class="form-group">
-          <label>当前密码</label>
-          <input v-model="currentPassword" type="password" placeholder="请输入当前密码" />
+      <div v-if="authStore.isLoggedIn" class="settings-content">
+        <!-- 用户信息卡片 -->
+        <div class="user-card">
+          <div class="user-avatar">👤</div>
+          <div class="user-info">
+            <h3>{{ authStore.user?.username }}</h3>
+            <p>有效期至: {{ authStore.user?.expiry_date || '永久' }}</p>
+          </div>
         </div>
-        <div class="form-group">
-          <label>新密码</label>
-          <input v-model="newPassword" type="password" placeholder="请输入新密码" />
+
+        <!-- 修改密码卡片 -->
+        <div class="password-card">
+          <h3>🔒 修改密码</h3>
+          <div class="form-group">
+            <label>当前密码</label>
+            <input
+              v-model="currentPassword"
+              type="password"
+              placeholder="请输入当前密码"
+              class="glass-input"
+            />
+          </div>
+          <div class="form-group">
+            <label>新密码</label>
+            <input
+              v-model="newPassword"
+              type="password"
+              placeholder="请输入新密码"
+              class="glass-input"
+            />
+          </div>
+          <div class="form-group">
+            <label>确认新密码</label>
+            <input
+              v-model="confirmPassword"
+              type="password"
+              placeholder="请再次输入新密码"
+              class="glass-input"
+            />
+          </div>
+          <div v-if="error" class="error-message">{{ error }}</div>
+          <div v-if="success" class="success-message">{{ success }}</div>
+          <button class="save-btn" :disabled="loading" @click="handleChangePassword">
+            <span v-if="loading" class="loading-spinner"></span>
+            {{ loading ? '保存中...' : '修改密码' }}
+          </button>
         </div>
-        <div class="form-group">
-          <label>确认新密码</label>
-          <input v-model="confirmPassword" type="password" placeholder="请再次输入新密码" />
-        </div>
-        <div v-if="error" class="error">{{ error }}</div>
-        <div v-if="success" class="success">{{ success }}</div>
-        <button class="save-btn" :disabled="loading" @click="handleChangePassword">
-          {{ loading ? '保存中...' : '修改密码' }}
+
+        <!-- 退出登录 -->
+        <button class="logout-btn" @click="handleLogout">
+          🚪 退出登录
         </button>
       </div>
 
-      <!-- 退出登录 -->
-      <button class="logout-btn" @click="handleLogout">退出登录</button>
-    </div>
-
-    <div v-else class="not-logged-in">
-      <p>请先登录</p>
-      <router-link to="/login" class="login-link">去登录</router-link>
+      <div v-else class="not-logged-in">
+        <p>请先登录</p>
+        <router-link to="/login" class="login-link">去登录</router-link>
+      </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.settings-page { padding: 20px; max-width: 600px; margin: 0 auto; }
-h1 { margin-bottom: 20px; color: #333; }
+.settings-page {
+  min-height: 100vh;
+  position: relative;
+  overflow: hidden;
+  padding: 20px;
+}
 
-.user-info { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; padding: 16px; background: #f8f9fa; border-radius: 12px; }
-.avatar { font-size: 48px; width: 64px; height: 64px; display: flex; align-items: center; justify-content: center; background: white; border-radius: 50%; }
-.user-info h3 { margin: 0 0 4px 0; color: #333; }
-.user-info p { margin: 0; color: #6c757d; font-size: 14px; }
+/* 背景装饰 */
+.bg-decoration {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
 
-.section { margin-bottom: 24px; }
-.section h3 { margin: 0 0 16px 0; color: #495057; font-size: 16px; }
+.bg-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.3;
+}
 
-.form-group { margin-bottom: 12px; }
-.form-group label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500; color: #495057; }
-.form-group input { width: 100%; padding: 10px 14px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; box-sizing: border-box; }
-.form-group input:focus { outline: none; border-color: #80bdff; box-shadow: 0 0 0 3px rgba(0,123,255,.15); }
+.orb-1 {
+  width: 300px;
+  height: 300px;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  top: -100px;
+  right: -100px;
+  animation: float 6s ease-in-out infinite;
+}
 
-.error { background: #f8d7da; color: #721c24; padding: 10px 14px; border-radius: 6px; font-size: 13px; margin-bottom: 12px; }
-.success { background: #d4edda; color: #155724; padding: 10px 14px; border-radius: 6px; font-size: 13px; margin-bottom: 12px; }
+.orb-2 {
+  width: 200px;
+  height: 200px;
+  background: linear-gradient(135deg, #ec4899, #f43f5e);
+  bottom: -50px;
+  left: -50px;
+  animation: float 8s ease-in-out infinite;
+  animation-delay: -2s;
+}
 
-.save-btn { padding: 10px 24px; background: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 15px; font-weight: 500; }
-.save-btn:hover { background: #0056b3; }
-.save-btn:disabled { background: #6c757d; cursor: not-allowed; }
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
 
-.logout-btn { width: 100%; padding: 12px; background: #dc3545; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 15px; font-weight: 500; margin-top: 16px; }
-.logout-btn:hover { background: #c82333; }
+/* 容器 */
+.settings-container {
+  position: relative;
+  z-index: 1;
+  max-width: 600px;
+  margin: 0 auto;
+  animation: fadeIn 0.6s ease-out;
+}
 
-.not-logged-in { text-align: center; padding: 40px; }
-.not-logged-in p { color: #6c757d; margin-bottom: 16px; }
-.login-link { color: #007bff; text-decoration: none; font-weight: 500; }
-.login-link:hover { text-decoration: underline; }
+/* 头部 */
+.settings-header {
+  text-align: center;
+  margin-bottom: 32px;
+  padding-top: 40px;
+}
+
+.settings-header h1 {
+  font-size: 28px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #fff, #a5b4fc);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0 0 8px;
+}
+
+.subtitle {
+  color: #94a3b8;
+  font-size: 14px;
+  margin: 0;
+}
+
+/* 用户信息卡片 */
+.user-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+}
+
+.user-card:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.user-avatar {
+  font-size: 48px;
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(99, 102, 241, 0.2);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.user-info h3 {
+  margin: 0 0 4px;
+  color: #e2e8f0;
+  font-size: 18px;
+}
+
+.user-info p {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 14px;
+}
+
+/* 密码卡片 */
+.password-card {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.password-card h3 {
+  margin: 0 0 20px;
+  color: #e2e8f0;
+  font-size: 18px;
+}
+
+/* 表单 */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #e2e8f0;
+}
+
+.glass-input {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 12px 16px;
+  color: #e2e8f0;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  width: 100%;
+  font-family: inherit;
+}
+
+.glass-input:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.glass-input::placeholder {
+  color: #64748b;
+}
+
+/* 消息 */
+.error-message {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 8px;
+  padding: 12px 16px;
+  color: #ef4444;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.success-message {
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 8px;
+  padding: 12px 16px;
+  color: #10b981;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+/* 保存按钮 */
+.save-btn {
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  border: none;
+  border-radius: 12px;
+  padding: 14px 24px;
+  color: white;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.save-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(99, 102, 241, 0.4);
+}
+
+.save-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.loading-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* 退出按钮 */
+.logout-btn {
+  width: 100%;
+  padding: 14px 24px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 12px;
+  color: #ef4444;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.logout-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  transform: translateY(-2px);
+}
+
+/* 未登录 */
+.not-logged-in {
+  text-align: center;
+  padding: 60px 20px;
+  color: #94a3b8;
+}
+
+.not-logged-in p {
+  margin: 0 0 16px;
+  font-size: 16px;
+}
+
+.login-link {
+  color: #818cf8;
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.login-link:hover {
+  color: #6366f1;
+  text-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 </style>

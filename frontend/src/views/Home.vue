@@ -45,14 +45,21 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="mobile-home">
+  <div class="home-page">
+    <!-- 背景装饰 -->
+    <div class="bg-decoration">
+      <div class="bg-orb orb-1"></div>
+      <div class="bg-orb orb-2"></div>
+      <div class="bg-orb orb-3"></div>
+    </div>
+
     <!-- 顶部搜索区 -->
     <div class="search-header">
       <div class="search-title">
-        <span class="icon">📚</span>
+        <span class="logo-icon">📚</span>
         <span class="title-text">搜书机器人</span>
       </div>
-      <p class="search-subtitle">全网搜索</p>
+      <p class="search-subtitle">全网搜索，极速响应</p>
       <p v-if="totalBooksDisplay" class="book-count">{{ totalBooksDisplay }}</p>
     </div>
 
@@ -76,11 +83,11 @@ onMounted(() => {
     <!-- 功能卡片 -->
     <div class="feature-cards">
       <div class="feature-card" @click="openBuyLink">
-        <div class="feature-icon bg-blue">🎫</div>
+        <div class="feature-icon">🎫</div>
         <span class="feature-text">卡密购买</span>
       </div>
       <div class="feature-card" @click="router.push('/feedback')">
-        <div class="feature-icon bg-green">📩</div>
+        <div class="feature-icon">📩</div>
         <span class="feature-text">需求提交</span>
       </div>
     </div>
@@ -90,13 +97,13 @@ onMounted(() => {
       <div class="promo-content">
         <span class="promo-icon">📖</span>
         <div class="promo-text">
-          <h3>全网搜索</h3>
-          <p>海量书籍，极速响应</p>
+          <h3>海量书籍</h3>
+          <p>极速搜索，即刻下载</p>
         </div>
       </div>
     </div>
 
-    <!-- 底部双Tab导航 -->
+    <!-- 底部导航 -->
     <div class="bottom-nav">
       <div class="nav-item active">
         <span class="nav-icon">🏠</span>
@@ -111,71 +118,321 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.mobile-home {
+.home-page {
   min-height: 100vh;
-  background: linear-gradient(180deg, #E3F2FD 0%, #F5FBFF 50%, #E8F4FD 100%);
-  padding-bottom: 80px;
   position: relative;
+  overflow: hidden;
+  padding-bottom: 80px;
 }
+
+/* 背景装饰 */
+.bg-decoration {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.bg-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.3;
+}
+
+.orb-1 {
+  width: 300px;
+  height: 300px;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  top: -100px;
+  right: -100px;
+  animation: float 6s ease-in-out infinite;
+}
+
+.orb-2 {
+  width: 200px;
+  height: 200px;
+  background: linear-gradient(135deg, #3b82f6, #06b6d4);
+  bottom: 200px;
+  left: -50px;
+  animation: float 8s ease-in-out infinite;
+  animation-delay: -2s;
+}
+
+.orb-3 {
+  width: 150px;
+  height: 150px;
+  background: linear-gradient(135deg, #ec4899, #f43f5e);
+  bottom: 100px;
+  right: 50px;
+  animation: float 7s ease-in-out infinite;
+  animation-delay: -4s;
+}
+
+/* 搜索头部 */
 .search-header {
-  background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
-  padding: 48px 20px 32px;
-  border-radius: 0 0 24px 24px;
+  position: relative;
+  z-index: 1;
+  padding: 60px 20px 40px;
   text-align: center;
 }
-.search-title { display: flex; align-items: center; justify-content: center; margin-bottom: 8px; gap: 8px; }
-.icon { font-size: 28px; }
-.title-text { font-size: 24px; font-weight: 700; color: white; }
-.search-subtitle { font-size: 14px; color: rgba(255,255,255,0.8); margin: 0; }
-.book-count { font-size: 13px; color: rgba(255,255,255,0.7); margin: 8px 0 0; }
-.search-box { padding: 0 20px; margin-top: -16px; }
+
+.search-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.logo-icon {
+  font-size: 32px;
+}
+
+.title-text {
+  font-size: 28px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #fff, #a5b4fc);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.search-subtitle {
+  font-size: 14px;
+  color: #94a3b8;
+  margin: 0;
+}
+
+.book-count {
+  font-size: 13px;
+  color: #64748b;
+  margin: 8px 0 0;
+}
+
+/* 搜索框 */
+.search-box {
+  position: relative;
+  z-index: 1;
+  padding: 0 20px;
+  margin-bottom: 32px;
+}
+
 .search-input-wrapper {
-  display: flex; align-items: center; background: white;
-  border-radius: 16px; padding: 4px 4px 4px 16px;
-  box-shadow: 0 4px 20px rgba(33,150,243,0.15);
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 4px 4px 4px 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
 }
-.search-icon { font-size: 20px; color: #90A4AE; flex-shrink: 0; margin-right: 8px; }
+
+.search-input-wrapper:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 32px rgba(99, 102, 241, 0.2);
+}
+
+.search-input-wrapper:focus-within {
+  border-color: #6366f1;
+  box-shadow: 0 8px 32px rgba(99, 102, 241, 0.3);
+}
+
+.search-icon {
+  font-size: 20px;
+  color: #94a3b8;
+  flex-shrink: 0;
+  margin-right: 8px;
+}
+
 .search-input {
-  flex: 1; border: none; outline: none; font-size: 15px;
-  color: #37474F; padding: 12px 8px; background: transparent;
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 15px;
+  color: #e2e8f0;
+  padding: 12px 8px;
+  background: transparent;
 }
-.search-input::placeholder { color: #90A4AE; }
+
+.search-input::placeholder {
+  color: #64748b;
+}
+
 .search-btn {
-  width: 44px; height: 44px; border-radius: 12px;
-  background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
-  border: none; display: flex; align-items: center; justify-content: center;
-  cursor: pointer; flex-shrink: 0; transition: transform 0.2s; color: white; font-size: 18px;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+  color: white;
+  font-size: 18px;
 }
-.search-btn:active { transform: scale(0.95); }
-.feature-cards { display: flex; gap: 12px; padding: 24px 20px 0; }
+
+.search-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+}
+
+.search-btn:active {
+  transform: scale(0.95);
+}
+
+/* 功能卡片 */
+.feature-cards {
+  display: flex;
+  gap: 16px;
+  padding: 0 20px;
+  margin-bottom: 32px;
+  position: relative;
+  z-index: 1;
+}
+
 .feature-card {
-  flex: 1; background: white; border-radius: 16px; padding: 20px;
-  display: flex; flex-direction: column; align-items: center; gap: 10px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.06); cursor: pointer; transition: transform 0.2s;
+  flex: 1;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
 }
-.feature-card:active { transform: scale(0.98); }
+
+.feature-card:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+}
+
 .feature-icon {
-  width: 48px; height: 48px; border-radius: 14px;
-  display: flex; align-items: center; justify-content: center; font-size: 24px;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(139, 92, 246, 0.2));
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
-.bg-blue { background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); }
-.bg-green { background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%); }
-.feature-text { font-size: 14px; font-weight: 600; color: #37474F; }
+
+.feature-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+/* 宣传横幅 */
 .promo-banner {
-  margin: 24px 20px 0; background: linear-gradient(135deg, #FF5252 0%, #E53935 100%);
-  border-radius: 16px; padding: 20px; box-shadow: 0 4px 16px rgba(255,82,82,0.2);
+  margin: 0 20px 32px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(236, 72, 153, 0.2));
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 24px;
+  position: relative;
+  z-index: 1;
+  transition: all 0.3s ease;
 }
-.promo-content { display: flex; align-items: center; gap: 16px; }
-.promo-icon { font-size: 32px; flex-shrink: 0; }
-.promo-text h3 { font-size: 18px; font-weight: 700; color: white; margin: 0 0 4px; }
-.promo-text p { font-size: 13px; color: rgba(255,255,255,0.85); margin: 0; }
+
+.promo-banner:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 12px 40px rgba(99, 102, 241, 0.2);
+}
+
+.promo-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.promo-icon {
+  font-size: 40px;
+  flex-shrink: 0;
+}
+
+.promo-text h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 4px;
+}
+
+.promo-text p {
+  font-size: 13px;
+  color: #94a3b8;
+  margin: 0;
+}
+
+/* 底部导航 */
 .bottom-nav {
-  position: fixed; bottom: 0; left: 0; right: 0; height: 64px;
-  background: white; display: flex; justify-content: space-around; align-items: center;
-  box-shadow: 0 -2px 12px rgba(0,0,0,0.06); border-radius: 24px 24px 0 0; z-index: 100;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 64px;
+  background: rgba(15, 15, 35, 0.8);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  z-index: 100;
 }
-.nav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; padding: 8px 24px; }
-.nav-icon { font-size: 20px; }
-.nav-text { font-size: 12px; color: #90A4AE; font-weight: 500; }
-.nav-text.active { color: #2196F3; }
+
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  padding: 8px 24px;
+  transition: all 0.3s ease;
+}
+
+.nav-item:hover {
+  transform: translateY(-2px);
+}
+
+.nav-icon {
+  font-size: 20px;
+}
+
+.nav-text {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.nav-text.active {
+  color: #6366f1;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
 </style>

@@ -22,6 +22,15 @@ export const useApi = () => {
       credentials: 'include',
     })
 
+    // 检查响应是否为 JSON
+    const contentType = response.headers.get('content-type')
+    const isJson = contentType && contentType.includes('application/json')
+
+    if (!isJson) {
+      const text = await response.text()
+      throw new Error('服务器响应格式错误')
+    }
+
     const data = await response.json()
 
     if (data.err && data.err !== 'ok') {

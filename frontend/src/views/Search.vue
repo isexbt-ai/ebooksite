@@ -43,17 +43,10 @@ const formatSize = (bytes: number) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
 
-/**
- * 下载书籍 - 预签名 URL 方案
- *
- * 1. 先请求 /api/books/download/{id} 获取预签名下载 URL
- * 2. 浏览器直接访问该 URL 下载文件（交给浏览器处理）
- */
 const downloadBook = async (book: any) => {
   downloading.value = book.id
   try {
     const api = useApi()
-    // 1. 请求下载接口获取预签名 URL（同时验证限速和权限）
     const data = await api.get(`/books/download/${book.id}`)
     const downloadUrl = data.data?.download_url
 
@@ -62,11 +55,9 @@ const downloadBook = async (book: any) => {
       return
     }
 
-    // 2. 浏览器直接访问预签名 URL 下载文件
-    // 这种方式让浏览器直接处理下载，不经过前端 JavaScript 处理文件流
     const a = document.createElement('a')
     a.href = downloadUrl
-    a.download = '' // 让浏览器使用服务器提供的文件名
+    a.download = ''
     a.target = '_blank'
     document.body.appendChild(a)
     a.click()
@@ -82,7 +73,6 @@ const goToDetail = (bookId: number) => {
   router.push(`/books/${bookId}`)
 }
 
-// 从 URL 参数获取搜索词
 onMounted(() => {
   const q = route.query.query as string
   if (q) {
@@ -94,89 +84,489 @@ onMounted(() => {
 
 <template>
   <div class="search-page">
-    <h1>搜索书籍</h1>
-
-    <div class="search-box">
-      <input v-model="query" placeholder="输入书名或作者..." @keyup.enter="doSearch" />
-      <button :disabled="loading" @click="doSearch">
-        {{ loading ? '搜索中...' : '搜索' }}
-      </button>
+    <!-- 背景装饰 -->
+    <div class="bg-decoration">
+      <div class="bg-orb orb-1"></div>
+      <div class="bg-orb orb-2"></div>
     </div>
 
-    <div v-if="loading" class="loading">搜索中...</div>
-    <div v-else-if="searched && results.length === 0" class="no-results">未找到相关书籍</div>
-    <div v-else-if="results.length > 0">
-      <p class="total">共找到 {{ total }} 本相关书籍</p>
-      <div class="results">
-        <div
-          v-for="book in results"
-          :key="book.id"
-          class="book-item"
-          @click="goToDetail(book.id)"
-        >
-          <div class="book-info">
-            <h3>{{ book.title }}</h3>
-            <p class="author">{{ book.author || '未知作者' }}</p>
-            <p class="meta">{{ book.file_format?.toUpperCase() }} · {{ formatSize(book.file_size) }}</p>
-          </div>
-          <button
-            class="download-btn"
-            :disabled="downloading === book.id"
-            @click.stop="downloadBook(book)"
-          >
-            {{ downloading === book.id ? '获取中...' : '下载' }}
+    <div class="search-container">
+      <!-- 头部 -->
+      <div class="search-header">
+        <h1>🔍 搜索书籍</h1>
+        <p class="subtitle">发现你想要的书籍</p>
+      </div>
+
+      <!-- 搜索框 -->
+      <div class="search-box">
+        <div class="search-input-wrapper">
+          <span class="search-icon">🔍</span>
+          <input
+            v-model="query"
+            placeholder="输入书名或作者..."
+            @keyup.enter="doSearch"
+          />
+          <button :disabled="loading" @click="doSearch">
+            {{ loading ? '搜索中...' : '搜索' }}
           </button>
         </div>
       </div>
 
-      <!-- 分页 -->
-      <div class="pagination">
-        <button :disabled="page <= 1" @click="changePage(page - 1)">上一页</button>
-        <span>第 {{ page }} 页</span>
-        <button :disabled="results.length < pageSize" @click="changePage(page + 1)">下一页</button>
+      <!-- 加载中 -->
+      <div v-if="loading" class="loading-state">
+        <div class="loading-spinner"></div>
+        <p>正在搜索...</p>
+      </div>
+
+      <!-- 无结果 -->
+      <div v-else-if="searched && results.length === 0" class="empty-state">
+        <span class="empty-icon">📚</span>
+        <p>未找到相关书籍</p>
+        <p class="empty-hint">试试其他关键词</p>
+      </div>
+
+      <!-- 结果列表 -->
+      <div v-else-if="results.length > 0" class="results-section">
+        <div class="results-header">
+          <p class="total">共找到 <span>{{ total }}</span> 本相关书籍</p>
+        </div>
+
+        <div class="results">
+          <div
+            v-for="book in results"
+            :key="book.id"
+            class="book-card"
+            @click="goToDetail(book.id)"
+          >
+            <div class="book-cover">
+              <span class="cover-icon">📖</span>
+            </div>
+            <div class="book-info">
+              <h3>{{ book.title }}</h3>
+              <p class="author">{{ book.author || '未知作者' }}</p>
+              <div class="book-meta">
+                <span class="format">{{ book.file_format?.toUpperCase() }}</span>
+                <span class="divider">·</span>
+                <span class="size">{{ formatSize(book.file_size) }}</span>
+              </div>
+            </div>
+            <button
+              class="download-btn"
+              :disabled="downloading === book.id"
+              @click.stop="downloadBook(book)"
+            >
+              <span v-if="downloading === book.id" class="btn-spinner"></span>
+              {{ downloading === book.id ? '获取中...' : '下载' }}
+            </button>
+          </div>
+        </div>
+
+        <!-- 分页 -->
+        <div class="pagination">
+          <button
+            :disabled="page <= 1"
+            class="page-btn"
+            @click="changePage(page - 1)"
+          >
+            ← 上一页
+          </button>
+          <span class="page-info">第 {{ page }} 页</span>
+          <button
+            :disabled="results.length < pageSize"
+            class="page-btn"
+            @click="changePage(page + 1)"
+          >
+            下一页 →
+          </button>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.search-page { padding: 20px; max-width: 800px; margin: 0 auto; }
-h1 { margin-bottom: 20px; color: #333; }
-
-.search-box { display: flex; gap: 10px; margin-bottom: 20px; }
-.search-box input { flex: 1; padding: 12px 16px; border: 1px solid #ced4da; border-radius: 8px; font-size: 15px; }
-.search-box input:focus { outline: none; border-color: #80bdff; box-shadow: 0 0 0 3px rgba(0,123,255,.15); }
-.search-box button { padding: 12px 24px; background: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 15px; font-weight: 500; }
-.search-box button:hover { background: #0056b3; }
-.search-box button:disabled { background: #6c757d; cursor: not-allowed; }
-
-.total { color: #6c757d; font-size: 14px; margin-bottom: 12px; }
-
-.results { display: flex; flex-direction: column; gap: 12px; }
-.book-item {
-  display: flex; align-items: center; justify-content: space-between;
-  background: white; border: 1px solid #e9ecef; border-radius: 8px;
-  padding: 16px; transition: box-shadow 0.2s; cursor: pointer;
+.search-page {
+  min-height: 100vh;
+  position: relative;
+  overflow: hidden;
+  padding: 20px;
 }
-.book-item:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-.book-info { flex: 1; min-width: 0; }
-.book-item h3 { margin: 0 0 4px 0; color: #333; font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.book-item .author { margin: 0; color: #6c757d; font-size: 14px; }
-.book-item .meta { margin: 4px 0 0 0; color: #adb5bd; font-size: 12px; }
+
+/* 背景装饰 */
+.bg-decoration {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.bg-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.3;
+}
+
+.orb-1 {
+  width: 300px;
+  height: 300px;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  top: -100px;
+  right: -100px;
+  animation: float 6s ease-in-out infinite;
+}
+
+.orb-2 {
+  width: 200px;
+  height: 200px;
+  background: linear-gradient(135deg, #3b82f6, #06b6d4);
+  bottom: 200px;
+  left: -50px;
+  animation: float 8s ease-in-out infinite;
+  animation-delay: -2s;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+/* 容器 */
+.search-container {
+  position: relative;
+  z-index: 1;
+  max-width: 800px;
+  margin: 0 auto;
+  animation: fadeIn 0.6s ease-out;
+}
+
+/* 头部 */
+.search-header {
+  text-align: center;
+  margin-bottom: 32px;
+  padding-top: 40px;
+}
+
+.search-header h1 {
+  font-size: 28px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #fff, #a5b4fc);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0 0 8px;
+}
+
+.subtitle {
+  color: #94a3b8;
+  font-size: 14px;
+  margin: 0;
+}
+
+/* 搜索框 */
+.search-box {
+  margin-bottom: 32px;
+}
+
+.search-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 4px 4px 4px 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+}
+
+.search-input-wrapper:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.search-input-wrapper:focus-within {
+  border-color: #6366f1;
+  box-shadow: 0 8px 32px rgba(99, 102, 241, 0.3);
+}
+
+.search-icon {
+  font-size: 20px;
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+
+.search-input-wrapper input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 15px;
+  color: #e2e8f0;
+  padding: 12px 8px;
+  background: transparent;
+  font-family: inherit;
+}
+
+.search-input-wrapper input::placeholder {
+  color: #64748b;
+}
+
+.search-input-wrapper button {
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  border: none;
+  border-radius: 12px;
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+
+.search-input-wrapper button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(99, 102, 241, 0.4);
+}
+
+.search-input-wrapper button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* 加载状态 */
+.loading-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #94a3b8;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 16px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* 空状态 */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #94a3b8;
+}
+
+.empty-icon {
+  font-size: 48px;
+  display: block;
+  margin-bottom: 16px;
+}
+
+.empty-state p {
+  font-size: 16px;
+  margin: 0 0 8px;
+}
+
+.empty-hint {
+  font-size: 13px;
+  color: #64748b;
+}
+
+/* 结果区域 */
+.results-section {
+  animation: fadeIn 0.4s ease-out;
+}
+
+.results-header {
+  margin-bottom: 16px;
+}
+
+.total {
+  color: #94a3b8;
+  font-size: 14px;
+  margin: 0;
+}
+
+.total span {
+  color: #6366f1;
+  font-weight: 600;
+}
+
+/* 书籍卡片 */
+.results {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.book-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.book-card:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.book-cover {
+  width: 56px;
+  height: 72px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(139, 92, 246, 0.2));
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.cover-icon {
+  font-size: 24px;
+}
+
+.book-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.book-info h3 {
+  margin: 0 0 4px;
+  color: #e2e8f0;
+  font-size: 15px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.book-info .author {
+  margin: 0 0 6px;
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+.book-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.book-meta .format {
+  padding: 2px 8px;
+  background: rgba(99, 102, 241, 0.2);
+  border-radius: 4px;
+  font-size: 11px;
+  color: #818cf8;
+  font-weight: 500;
+}
+
+.book-meta .divider {
+  color: #475569;
+  font-size: 11px;
+}
+
+.book-meta .size {
+  color: #64748b;
+  font-size: 11px;
+}
 
 .download-btn {
-  padding: 8px 16px; background: #28a745; color: white; border: none;
-  border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;
-  flex-shrink: 0; margin-left: 12px;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #10b981, #059669);
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
-.download-btn:hover { background: #218838; }
-.download-btn:disabled { background: #6c757d; cursor: not-allowed; }
 
-.pagination { display: flex; justify-content: center; align-items: center; gap: 16px; margin-top: 20px; padding: 12px; }
-.pagination button { padding: 6px 14px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; }
-.pagination button:hover { background: #0056b3; }
-.pagination button:disabled { background: #6c757d; cursor: not-allowed; }
-.pagination span { color: #6c757d; font-size: 14px; }
+.download-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+}
 
-.loading, .no-results { text-align: center; padding: 40px; color: #6c757d; }
+.download-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+/* 分页 */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  margin-top: 32px;
+  padding: 16px;
+}
+
+.page-btn {
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #e2e8f0;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.page-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.page-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.page-info {
+  color: #94a3b8;
+  font-size: 14px;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 </style>
