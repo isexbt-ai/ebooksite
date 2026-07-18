@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useApi } from '@/composables/useApi'
 import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
@@ -21,11 +20,24 @@ const login = async () => {
   error.value = ''
 
   try {
-    const api = useApi()
-    const data = await api.post('/admin/auth/login', {
-      username: username.value,
-      password: password.value,
+    const API_BASE = import.meta.env.VITE_API_BASE || '/api'
+    const response = await fetch(`${API_BASE}/admin/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        username: username.value,
+        password: password.value,
+      }),
     })
+
+    const data = await response.json()
+
+    if (data.err && data.err !== 'ok') {
+      throw new Error(data.msg || data.err)
+    }
+
     if (data.data) {
       localStorage.setItem('admin_token', data.data.token)
       localStorage.setItem('token', data.data.token)
