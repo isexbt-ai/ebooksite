@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useApi } from '@/composables/useApi'
 
@@ -27,7 +27,8 @@ const login = async () => {
     if (data.data) {
       localStorage.setItem('admin_token', data.data.token)
       localStorage.setItem('token', data.data.token)
-      router.push('/admin')
+      // 刷新页面以触发路由守卫重新检查
+      window.location.href = '/admin'
     }
   } catch (e: any) {
     error.value = e.message || '登录失败'
@@ -68,28 +69,28 @@ const login = async () => {
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
   padding: 20px;
 }
 .login-card {
   background: white;
-  border-radius: 16px;
+  border: 1px solid #e2e8f0;
   padding: 40px;
   width: 100%;
   max-width: 400px;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
 }
-h1 { text-align: center; margin: 0 0 4px 0; color: #333; font-size: 24px; }
-.subtitle { text-align: center; margin: 0 0 24px 0; color: #6c757d; font-size: 14px; }
+h1 { text-align: center; margin: 0 0 4px 0; color: #1e293b; font-size: 24px; }
+.subtitle { text-align: center; margin: 0 0 24px 0; color: #64748b; font-size: 14px; }
 
 .form-group { margin-bottom: 16px; }
-.form-group label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500; color: #495057; }
-.form-group input { width: 100%; padding: 10px 14px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px; box-sizing: border-box; }
-.form-group input:focus { outline: none; border-color: #80bdff; box-shadow: 0 0 0 3px rgba(0,123,255,.15); }
+.form-group label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500; color: #1e293b; }
+.form-group input { width: 100%; padding: 12px 16px; border: 1px solid #e2e8f0; font-size: 14px; box-sizing: border-box; transition: all 0.3s ease; }
+.form-group input:focus { outline: none; border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.1); }
 
-.error { background: #f8d7da; color: #721c24; padding: 10px 14px; border-radius: 6px; font-size: 13px; margin-bottom: 16px; }
+.error { background: rgba(239,68,68,.05); border: 1px solid rgba(239,68,68,.2); padding: 12px 16px; color: #ef4444; font-size: 13px; margin-bottom: 16px; }
 
-.login-btn { width: 100%; padding: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 15px; font-weight: 500; transition: opacity 0.2s; }
-.login-btn:hover { opacity: 0.9; }
-.login-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.login-btn { width: 100%; padding: 14px; background: linear-gradient(135deg, #6366f1, #4f46e5); color: white; border: none; font-size: 15px; font-weight: 500; cursor: pointer; transition: all 0.3s ease; }
+.login-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(99,102,241,.3); }
+.login-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 </style>
