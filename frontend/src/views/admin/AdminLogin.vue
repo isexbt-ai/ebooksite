@@ -2,8 +2,10 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useApi } from '@/composables/useApi'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
+const authStore = useAuthStore()
 const username = ref('')
 const password = ref('')
 const loading = ref(false)
@@ -27,8 +29,11 @@ const login = async () => {
     if (data.data) {
       localStorage.setItem('admin_token', data.data.token)
       localStorage.setItem('token', data.data.token)
-      // 刷新页面以触发路由守卫重新检查
-      window.location.href = '/admin'
+      // 更新 auth store
+      authStore.setToken(data.data.token)
+      authStore.setUser(data.data)
+      // 使用 router.push 跳转
+      router.push('/admin')
     }
   } catch (e: any) {
     error.value = e.message || '登录失败'
