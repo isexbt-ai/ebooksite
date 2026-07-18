@@ -17,7 +17,10 @@ export const useAuthStore = defineStore('auth', () => {
   const token = ref('')
 
   const isLoggedIn = computed(() => !!user.value && !!token.value)
-  const isAdmin = computed(() => user.value?.admin || false)
+  const isAdmin = computed(() => {
+    if (user.value?.admin) return true
+    return !!localStorage.getItem('admin_token')
+  })
   const isExpired = computed(() => {
     if (!user.value?.expiry_date) return false
     return new Date(user.value.expiry_date) < new Date()
@@ -43,6 +46,7 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = null
     token.value = ''
     localStorage.removeItem('token')
+    localStorage.removeItem('admin_token')
   }
 
   const fetchUser = async () => {

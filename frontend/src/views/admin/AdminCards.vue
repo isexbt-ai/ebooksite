@@ -117,40 +117,41 @@ onMounted(fetchCards)
 
 <style scoped>
 .admin-cards { padding: 20px; max-width: 1200px; margin: 0 auto; }
-h1 { margin-bottom: 20px; color: #333; }
+h1 { margin-bottom: 20px; color: #111827; font-size: 20px; }
 
 /* 生成区域 */
 .generate-section {
-  background: #f8f9fa;
-  border: 1px solid #e9ecef;
+  background: #fff;
+  border: 1px solid #e5e7eb;
   border-radius: 8px;
   padding: 16px;
   margin-bottom: 24px;
 }
-.generate-section h3 { margin: 0 0 12px 0; color: #495057; }
+.generate-section h3 { margin: 0 0 12px 0; color: #374151; font-size: 15px; }
 .generate-form { display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
 .form-group { display: flex; flex-direction: column; gap: 4px; }
-.form-group label { font-size: 13px; color: #6c757d; font-weight: 500; }
-.form-group input, .form-group select { padding: 8px 12px; border: 1px solid #ced4da; border-radius: 4px; font-size: 14px; min-width: 100px; }
-.generate-btn { padding: 8px 20px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; height: fit-content; }
-.generate-btn:hover { background: #218838; }
+.form-group label { font-size: 13px; color: #6b7280; font-weight: 500; }
+.form-group input, .form-group select { padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; min-width: 100px; }
+.form-group input:focus, .form-group select:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.1); }
+.generate-btn { padding: 8px 20px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; height: fit-content; }
+.generate-btn:hover { background: #2563eb; }
 
 /* 表格 */
-table { width: 100%; border-collapse: collapse; margin-top: 16px; }
-th, td { padding: 12px; border: 1px solid #dee2e6; text-align: left; }
-th { background: #f8f9fa; font-weight: 600; color: #495057; }
-td { color: #212529; }
-tr:hover { background: #f8f9fa; }
-.code { font-family: monospace; font-size: 13px; background: #f8f9fa; padding: 2px 6px; border-radius: 3px; }
+table { width: 100%; border-collapse: collapse; margin-top: 16px; background: #fff; border-radius: 8px; overflow: hidden; }
+th, td { padding: 12px 16px; text-align: left; }
+th { background: #f9fafb; font-weight: 600; color: #374151; font-size: 13px; border-bottom: 1px solid #e5e7eb; }
+td { color: #374151; font-size: 14px; border-bottom: 1px solid #f3f4f6; }
+tr:hover td { background: #f9fafb; }
+.code { font-family: monospace; font-size: 13px; background: #f3f4f6; padding: 2px 6px; border-radius: 3px; }
 .status { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; }
-.status.used { background: #f8d7da; color: #721c24; }
-.status.unused { background: #d4edda; color: #155724; }
+.status.used { background: #fef2f2; color: #991b1b; }
+.status.unused { background: #f0fdf4; color: #166534; }
 
 .pagination { display: flex; justify-content: center; align-items: center; gap: 16px; margin-top: 20px; padding: 12px; }
-.pagination button { padding: 6px 14px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; }
-.pagination button:hover { background: #0056b3; }
-.pagination button:disabled { background: #6c757d; cursor: not-allowed; }
-.pagination span { color: #6c757d; font-size: 14px; }
+.pagination button { padding: 6px 14px; background: #fff; color: #374151; border: 1px solid #d1d5db; border-radius: 6px; cursor: pointer; font-size: 13px; }
+.pagination button:hover { background: #f9fafb; border-color: #9ca3af; }
+.pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
+.pagination span { color: #6b7280; font-size: 14px; }
 
-.loading, .empty { text-align: center; padding: 40px; color: #6c757d; }
+.loading, .empty { text-align: center; padding: 40px; color: #6b7280; }
 </style>

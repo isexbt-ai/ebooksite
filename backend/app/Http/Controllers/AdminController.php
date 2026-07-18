@@ -41,6 +41,7 @@ class AdminController extends Controller
                 'user_id' => $user->id,
                 'username' => $user->username,
                 'name' => $user->name,
+                'admin' => true,
                 'token' => $token,
             ],
         ]);

@@ -1,9 +1,8 @@
 node_modules/
-.nuxt/
-.output/
+dist/
 *.log
 data/
-__pycache__/
-*.pyc
 .DS_Store
 .env
+backend/public/index.html
+backend/public/assets/

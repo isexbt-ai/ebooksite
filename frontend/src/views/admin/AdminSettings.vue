@@ -71,16 +71,16 @@ onMounted(fetchSettings)
 
 <style scoped>
 .admin-settings { padding: 20px; max-width: 800px; margin: 0 auto; }
-h1 { margin-bottom: 24px; color: #333; }
+h1 { margin-bottom: 24px; color: #111827; font-size: 20px; }
 
 .settings-form { display: flex; flex-direction: column; gap: 20px; }
 .form-group { display: flex; flex-direction: column; gap: 6px; }
-.form-group label { font-size: 14px; font-weight: 600; color: #495057; }
-.form-group input { padding: 10px 14px; border: 1px solid #ced4da; border-radius: 6px; font-size: 14px; }
-.form-group input:focus { outline: none; border-color: #80bdff; box-shadow: 0 0 0 2px rgba(0,123,255,.15); }
-.hint { margin: 0; font-size: 12px; color: #6c757d; }
+.form-group label { font-size: 14px; font-weight: 500; color: #374151; }
+.form-group input { padding: 10px 14px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; }
+.form-group input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.1); }
+.hint { margin: 0; font-size: 12px; color: #9ca3af; }
 
-.save-btn { padding: 10px 24px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 15px; font-weight: 500; align-self: flex-start; margin-top: 8px; }
-.save-btn:hover { background: #0056b3; }
-.save-btn:disabled { background: #6c757d; cursor: not-allowed; }
+.save-btn { padding: 10px 24px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; align-self: flex-start; margin-top: 8px; }
+.save-btn:hover { background: #2563eb; }
+.save-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 </style>

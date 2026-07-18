@@ -43,7 +43,16 @@ const login = async () => {
       localStorage.setItem('token', data.data.token)
       // 更新 auth store
       authStore.setToken(data.data.token)
-      authStore.setUser(data.data)
+      authStore.setUser({
+        id: data.data.user_id,
+        username: data.data.username,
+        name: data.data.name,
+        email: '',
+        avatar: '',
+        admin: true,
+        active: true,
+        expiry_date: null,
+      })
       // 使用 router.push 跳转
       router.push('/admin')
     }
@@ -86,28 +95,29 @@ const login = async () => {
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+  background: #f5f6f8;
   padding: 20px;
 }
 .login-card {
   background: white;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #e5e7eb;
   padding: 40px;
   width: 100%;
   max-width: 400px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
 }
-h1 { text-align: center; margin: 0 0 4px 0; color: #1e293b; font-size: 24px; }
-.subtitle { text-align: center; margin: 0 0 24px 0; color: #64748b; font-size: 14px; }
+h1 { text-align: center; margin: 0 0 4px 0; color: #111827; font-size: 22px; }
+.subtitle { text-align: center; margin: 0 0 24px 0; color: #6b7280; font-size: 14px; }
 
 .form-group { margin-bottom: 16px; }
-.form-group label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500; color: #1e293b; }
-.form-group input { width: 100%; padding: 12px 16px; border: 1px solid #e2e8f0; font-size: 14px; box-sizing: border-box; transition: all 0.3s ease; }
-.form-group input:focus { outline: none; border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.1); }
+.form-group label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500; color: #374151; }
+.form-group input { width: 100%; padding: 10px 14px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; box-sizing: border-box; transition: border-color 0.15s; }
+.form-group input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
 
-.error { background: rgba(239,68,68,.05); border: 1px solid rgba(239,68,68,.2); padding: 12px 16px; color: #ef4444; font-size: 13px; margin-bottom: 16px; }
+.error { background: #fef2f2; border: 1px solid #fecaca; padding: 10px 14px; color: #dc2626; font-size: 13px; margin-bottom: 16px; border-radius: 6px; }
 
-.login-btn { width: 100%; padding: 14px; background: linear-gradient(135deg, #6366f1, #4f46e5); color: white; border: none; font-size: 15px; font-weight: 500; cursor: pointer; transition: all 0.3s ease; }
-.login-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(99,102,241,.3); }
-.login-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+.login-btn { width: 100%; padding: 12px; background: #3b82f6; color: white; border: none; border-radius: 6px; font-size: 15px; font-weight: 500; cursor: pointer; transition: background 0.15s; }
+.login-btn:hover { background: #2563eb; }
+.login-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 </style>
