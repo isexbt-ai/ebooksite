@@ -47,7 +47,7 @@ const submitFeedback = async () => {
         <p class="subtitle">遇到问题？请告诉我们</p>
       </div>
 
-      <!-- 表单卡片 -->
+      <!-- 表单卡片 - 白色/透明，无圆角 -->
       <div class="feedback-card">
         <div class="feedback-form">
           <div class="form-group">
@@ -56,7 +56,6 @@ const submitFeedback = async () => {
               v-model="content"
               placeholder="请描述您遇到的问题或建议..."
               rows="5"
-              class="glass-input"
             />
           </div>
 
@@ -66,7 +65,6 @@ const submitFeedback = async () => {
               v-model="contact"
               type="text"
               placeholder="邮箱或手机号"
-              class="glass-input"
             />
           </div>
 
@@ -104,6 +102,7 @@ const submitFeedback = async () => {
   align-items: center;
   justify-content: center;
   padding: 20px;
+  background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
 }
 
 /* 背景装饰 */
@@ -180,20 +179,18 @@ const submitFeedback = async () => {
   margin: 0;
 }
 
-/* 卡片 */
+/* 卡片 - 白色/透明，无圆角 */
 .feedback-card {
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   padding: 32px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
   transition: all 0.3s ease;
 }
 
 .feedback-card:hover {
-  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 1);
+  border-color: rgba(255, 255, 255, 0.5);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
 }
 
@@ -213,37 +210,39 @@ const submitFeedback = async () => {
 .form-group label {
   font-size: 14px;
   font-weight: 500;
-  color: #e2e8f0;
+  color: #1e293b;
 }
 
 .required {
   color: #ef4444;
 }
 
-.glass-input {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
+.form-group input,
+.form-group textarea {
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid #e2e8f0;
   padding: 12px 16px;
-  color: #e2e8f0;
+  color: #1e293b;
   font-size: 14px;
   transition: all 0.3s ease;
   width: 100%;
   font-family: inherit;
 }
 
-.glass-input:focus {
+.form-group input:focus,
+.form-group textarea:focus {
   outline: none;
   border-color: #6366f1;
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 1);
 }
 
-.glass-input::placeholder {
-  color: #64748b;
+.form-group input::placeholder,
+.form-group textarea::placeholder {
+  color: #94a3b8;
 }
 
-textarea.glass-input {
+.form-group textarea {
   resize: vertical;
   min-height: 120px;
 }
@@ -252,7 +251,6 @@ textarea.glass-input {
 .error-message {
   background: rgba(239, 68, 68, 0.1);
   border: 1px solid rgba(239, 68, 68, 0.3);
-  border-radius: 8px;
   padding: 12px 16px;
   color: #ef4444;
   font-size: 13px;
@@ -261,7 +259,6 @@ textarea.glass-input {
 .success-message {
   background: rgba(16, 185, 129, 0.1);
   border: 1px solid rgba(16, 185, 129, 0.3);
-  border-radius: 8px;
   padding: 12px 16px;
   color: #10b981;
   font-size: 13px;
@@ -278,7 +275,6 @@ textarea.glass-input {
 .submit-btn {
   background: linear-gradient(135deg, #6366f1, #4f46e5);
   border: none;
-  border-radius: 12px;
   padding: 14px 24px;
   color: white;
   font-size: 15px;
@@ -324,7 +320,7 @@ textarea.glass-input {
 }
 
 .footer-info p {
-  color: #64748b;
+  color: #94a3b8;
   font-size: 13px;
 }
 

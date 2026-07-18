@@ -64,7 +64,6 @@ const handleLogin = async () => {
             v-model="username"
             type="text"
             placeholder="请输入用户名"
-            class="glass-input"
             @keyup.enter="handleLogin"
           />
         </div>
@@ -75,7 +74,6 @@ const handleLogin = async () => {
             v-model="password"
             type="password"
             placeholder="请输入密码"
-            class="glass-input"
             @keyup.enter="handleLogin"
           />
         </div>
@@ -105,6 +103,7 @@ const handleLogin = async () => {
   padding: 20px;
   position: relative;
   overflow: hidden;
+  background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
 }
 
 /* 背景装饰 */
@@ -160,24 +159,21 @@ const handleLogin = async () => {
   50% { transform: translateY(-10px); }
 }
 
-/* 登录卡片 */
+/* 登录卡片 - 白色/透明，无圆角 */
 .login-card {
   position: relative;
   z-index: 1;
   width: 100%;
   max-width: 420px;
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   padding: 40px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   animation: fadeIn 0.6s ease-out;
 }
 
 .login-card:hover {
-  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
 }
 
 /* 头部 */
@@ -195,15 +191,12 @@ const handleLogin = async () => {
 .login-title {
   font-size: 28px;
   font-weight: 700;
-  background: linear-gradient(135deg, #fff, #a5b4fc);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #1e293b;
   margin: 0 0 8px;
 }
 
 .subtitle {
-  color: #94a3b8;
+  color: #64748b;
   font-size: 14px;
   margin: 0;
 }
@@ -224,37 +217,35 @@ const handleLogin = async () => {
 .form-group label {
   font-size: 14px;
   font-weight: 500;
-  color: #e2e8f0;
+  color: #1e293b;
 }
 
-.glass-input {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
+.form-group input {
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid #e2e8f0;
   padding: 12px 16px;
-  color: #e2e8f0;
+  color: #1e293b;
   font-size: 14px;
   transition: all 0.3s ease;
   width: 100%;
   font-family: inherit;
 }
 
-.glass-input:focus {
+.form-group input:focus {
   outline: none;
   border-color: #6366f1;
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 1);
 }
 
-.glass-input::placeholder {
-  color: #64748b;
+.form-group input::placeholder {
+  color: #94a3b8;
 }
 
 /* 错误消息 */
 .error-message {
   background: rgba(239, 68, 68, 0.1);
   border: 1px solid rgba(239, 68, 68, 0.3);
-  border-radius: 8px;
   padding: 12px 16px;
   color: #ef4444;
   font-size: 13px;
@@ -264,7 +255,6 @@ const handleLogin = async () => {
 .login-btn {
   background: linear-gradient(135deg, #6366f1, #4f46e5);
   border: none;
-  border-radius: 12px;
   padding: 14px 24px;
   color: white;
   font-size: 15px;
@@ -307,19 +297,18 @@ const handleLogin = async () => {
 .register-link {
   text-align: center;
   font-size: 14px;
-  color: #94a3b8;
+  color: #64748b;
 }
 
 .register-link a {
-  color: #818cf8;
+  color: #6366f1;
   text-decoration: none;
   font-weight: 500;
   transition: all 0.3s ease;
 }
 
 .register-link a:hover {
-  color: #6366f1;
-  text-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+  color: #4f46e5;
 }
 
 @keyframes fadeIn {

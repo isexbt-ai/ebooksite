@@ -71,7 +71,7 @@ onMounted(() => {
       </div>
 
       <div v-if="authStore.isLoggedIn" class="settings-content">
-        <!-- 用户信息卡片 -->
+        <!-- 用户信息卡片 - 白色/透明，无圆角 -->
         <div class="user-card">
           <div class="user-avatar">👤</div>
           <div class="user-info">
@@ -80,7 +80,7 @@ onMounted(() => {
           </div>
         </div>
 
-        <!-- 修改密码卡片 -->
+        <!-- 修改密码卡片 - 白色/透明，无圆角 -->
         <div class="password-card">
           <h3>🔒 修改密码</h3>
           <div class="form-group">
@@ -89,7 +89,6 @@ onMounted(() => {
               v-model="currentPassword"
               type="password"
               placeholder="请输入当前密码"
-              class="glass-input"
             />
           </div>
           <div class="form-group">
@@ -98,7 +97,6 @@ onMounted(() => {
               v-model="newPassword"
               type="password"
               placeholder="请输入新密码"
-              class="glass-input"
             />
           </div>
           <div class="form-group">
@@ -107,7 +105,6 @@ onMounted(() => {
               v-model="confirmPassword"
               type="password"
               placeholder="请再次输入新密码"
-              class="glass-input"
             />
           </div>
           <div v-if="error" class="error-message">{{ error }}</div>
@@ -138,6 +135,7 @@ onMounted(() => {
   position: relative;
   overflow: hidden;
   padding: 20px;
+  background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
 }
 
 /* 背景装饰 */
@@ -215,16 +213,13 @@ onMounted(() => {
   margin: 0;
 }
 
-/* 用户信息卡片 */
+/* 用户信息卡片 - 白色/透明，无圆角 */
 .user-card {
   display: flex;
   align-items: center;
   gap: 16px;
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   padding: 24px;
   margin-bottom: 24px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
@@ -232,7 +227,8 @@ onMounted(() => {
 }
 
 .user-card:hover {
-  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 1);
+  border-color: rgba(255, 255, 255, 0.5);
 }
 
 .user-avatar {
@@ -242,38 +238,40 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(99, 102, 241, 0.2);
-  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(139, 92, 246, 0.2));
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .user-info h3 {
   margin: 0 0 4px;
-  color: #e2e8f0;
+  color: #1e293b;
   font-size: 18px;
 }
 
 .user-info p {
   margin: 0;
-  color: #94a3b8;
+  color: #64748b;
   font-size: 14px;
 }
 
-/* 密码卡片 */
+/* 密码卡片 - 白色/透明，无圆角 */
 .password-card {
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   padding: 24px;
   margin-bottom: 24px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+}
+
+.password-card:hover {
+  background: rgba(255, 255, 255, 1);
+  border-color: rgba(255, 255, 255, 0.5);
 }
 
 .password-card h3 {
   margin: 0 0 20px;
-  color: #e2e8f0;
+  color: #1e293b;
   font-size: 18px;
 }
 
@@ -288,37 +286,35 @@ onMounted(() => {
 .form-group label {
   font-size: 14px;
   font-weight: 500;
-  color: #e2e8f0;
+  color: #1e293b;
 }
 
-.glass-input {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
+.form-group input {
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid #e2e8f0;
   padding: 12px 16px;
-  color: #e2e8f0;
+  color: #1e293b;
   font-size: 14px;
   transition: all 0.3s ease;
   width: 100%;
   font-family: inherit;
 }
 
-.glass-input:focus {
+.form-group input:focus {
   outline: none;
   border-color: #6366f1;
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 1);
 }
 
-.glass-input::placeholder {
-  color: #64748b;
+.form-group input::placeholder {
+  color: #94a3b8;
 }
 
 /* 消息 */
 .error-message {
   background: rgba(239, 68, 68, 0.1);
   border: 1px solid rgba(239, 68, 68, 0.3);
-  border-radius: 8px;
   padding: 12px 16px;
   color: #ef4444;
   font-size: 13px;
@@ -328,7 +324,6 @@ onMounted(() => {
 .success-message {
   background: rgba(16, 185, 129, 0.1);
   border: 1px solid rgba(16, 185, 129, 0.3);
-  border-radius: 8px;
   padding: 12px 16px;
   color: #10b981;
   font-size: 13px;
@@ -339,7 +334,6 @@ onMounted(() => {
 .save-btn {
   background: linear-gradient(135deg, #6366f1, #4f46e5);
   border: none;
-  border-radius: 12px;
   padding: 14px 24px;
   color: white;
   font-size: 15px;
@@ -383,7 +377,6 @@ onMounted(() => {
   padding: 14px 24px;
   background: rgba(239, 68, 68, 0.1);
   border: 1px solid rgba(239, 68, 68, 0.3);
-  border-radius: 12px;
   color: #ef4444;
   font-size: 15px;
   font-weight: 500;
@@ -409,15 +402,14 @@ onMounted(() => {
 }
 
 .login-link {
-  color: #818cf8;
+  color: #6366f1;
   text-decoration: none;
   font-weight: 500;
   transition: all 0.3s ease;
 }
 
 .login-link:hover {
-  color: #6366f1;
-  text-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+  color: #4f46e5;
 }
 
 @keyframes fadeIn {

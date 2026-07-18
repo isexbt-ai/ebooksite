@@ -22,17 +22,19 @@ export const useApi = () => {
       credentials: 'include',
     })
 
-    // 检查响应是否为 JSON
-    const contentType = response.headers.get('content-type')
-    const isJson = contentType && contentType.includes('application/json')
+    // 获取响应文本
+    const text = await response.text()
 
-    if (!isJson) {
-      const text = await response.text()
+    // 尝试解析 JSON
+    let data: any
+    try {
+      data = JSON.parse(text)
+    } catch (e) {
+      // 如果无法解析 JSON，可能是 HTML 错误页面
       throw new Error('服务器响应格式错误')
     }
 
-    const data = await response.json()
-
+    // 检查后端返回的错误
     if (data.err && data.err !== 'ok') {
       throw new Error(data.msg || data.err)
     }

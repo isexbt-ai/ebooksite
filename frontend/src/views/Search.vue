@@ -97,7 +97,7 @@ onMounted(() => {
         <p class="subtitle">发现你想要的书籍</p>
       </div>
 
-      <!-- 搜索框 -->
+      <!-- 搜索框 - 白色/透明，无圆角 -->
       <div class="search-box">
         <div class="search-input-wrapper">
           <span class="search-icon">🔍</span>
@@ -161,7 +161,7 @@ onMounted(() => {
           </div>
         </div>
 
-        <!-- 分页 -->
+        <!-- 分页 - 白色/透明，无圆角 -->
         <div class="pagination">
           <button
             :disabled="page <= 1"
@@ -190,6 +190,7 @@ onMounted(() => {
   position: relative;
   overflow: hidden;
   padding: 20px;
+  background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
 }
 
 /* 背景装饰 */
@@ -267,7 +268,7 @@ onMounted(() => {
   margin: 0;
 }
 
-/* 搜索框 */
+/* 搜索框 - 白色/透明，无圆角 */
 .search-box {
   margin-bottom: 32px;
 }
@@ -276,18 +277,15 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 12px;
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   padding: 4px 4px 4px 16px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
   transition: all 0.3s ease;
 }
 
 .search-input-wrapper:hover {
-  border-color: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.5);
 }
 
 .search-input-wrapper:focus-within {
@@ -306,21 +304,20 @@ onMounted(() => {
   border: none;
   outline: none;
   font-size: 15px;
-  color: #e2e8f0;
+  color: #1e293b;
   padding: 12px 8px;
   background: transparent;
   font-family: inherit;
 }
 
 .search-input-wrapper input::placeholder {
-  color: #64748b;
+  color: #94a3b8;
 }
 
 .search-input-wrapper button {
   padding: 12px 24px;
   background: linear-gradient(135deg, #6366f1, #4f46e5);
   border: none;
-  border-radius: 12px;
   color: white;
   font-size: 14px;
   font-weight: 500;
@@ -404,7 +401,7 @@ onMounted(() => {
   font-weight: 600;
 }
 
-/* 书籍卡片 */
+/* 书籍卡片 - 白色/透明，无圆角 */
 .results {
   display: flex;
   flex-direction: column;
@@ -415,19 +412,16 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 16px;
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   padding: 16px;
   cursor: pointer;
   transition: all 0.3s ease;
 }
 
 .book-card:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 1);
+  border-color: rgba(255, 255, 255, 0.5);
   transform: translateY(-2px);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
 }
@@ -436,7 +430,6 @@ onMounted(() => {
   width: 56px;
   height: 72px;
   background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(139, 92, 246, 0.2));
-  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -455,7 +448,7 @@ onMounted(() => {
 
 .book-info h3 {
   margin: 0 0 4px;
-  color: #e2e8f0;
+  color: #1e293b;
   font-size: 15px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -464,7 +457,7 @@ onMounted(() => {
 
 .book-info .author {
   margin: 0 0 6px;
-  color: #94a3b8;
+  color: #64748b;
   font-size: 13px;
 }
 
@@ -477,14 +470,13 @@ onMounted(() => {
 .book-meta .format {
   padding: 2px 8px;
   background: rgba(99, 102, 241, 0.2);
-  border-radius: 4px;
   font-size: 11px;
-  color: #818cf8;
+  color: #6366f1;
   font-weight: 500;
 }
 
 .book-meta .divider {
-  color: #475569;
+  color: #94a3b8;
   font-size: 11px;
 }
 
@@ -497,7 +489,6 @@ onMounted(() => {
   padding: 8px 16px;
   background: linear-gradient(135deg, #10b981, #059669);
   border: none;
-  border-radius: 8px;
   color: white;
   font-size: 13px;
   font-weight: 500;
@@ -529,7 +520,7 @@ onMounted(() => {
   animation: spin 0.8s linear infinite;
 }
 
-/* 分页 */
+/* 分页 - 白色/透明，无圆角 */
 .pagination {
   display: flex;
   justify-content: center;
@@ -541,18 +532,17 @@ onMounted(() => {
 
 .page-btn {
   padding: 8px 16px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  color: #e2e8f0;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #1e293b;
   font-size: 13px;
   cursor: pointer;
   transition: all 0.3s ease;
 }
 
 .page-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 1);
+  border-color: rgba(255, 255, 255, 0.5);
 }
 
 .page-btn:disabled {

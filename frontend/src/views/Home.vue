@@ -123,6 +123,7 @@ onMounted(() => {
   position: relative;
   overflow: hidden;
   padding-bottom: 80px;
+  background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
 }
 
 /* 背景装饰 */
@@ -173,6 +174,11 @@ onMounted(() => {
   animation-delay: -4s;
 }
 
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
 /* 搜索头部 */
 .search-header {
   position: relative;
@@ -214,7 +220,7 @@ onMounted(() => {
   margin: 8px 0 0;
 }
 
-/* 搜索框 */
+/* 搜索框 - 白色/透明，无圆角 */
 .search-box {
   position: relative;
   z-index: 1;
@@ -225,18 +231,15 @@ onMounted(() => {
 .search-input-wrapper {
   display: flex;
   align-items: center;
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   padding: 4px 4px 4px 16px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
   transition: all 0.3s ease;
 }
 
 .search-input-wrapper:hover {
-  border-color: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.5);
   box-shadow: 0 8px 32px rgba(99, 102, 241, 0.2);
 }
 
@@ -257,19 +260,18 @@ onMounted(() => {
   border: none;
   outline: none;
   font-size: 15px;
-  color: #e2e8f0;
+  color: #1e293b;
   padding: 12px 8px;
   background: transparent;
 }
 
 .search-input::placeholder {
-  color: #64748b;
+  color: #94a3b8;
 }
 
 .search-btn {
   width: 44px;
   height: 44px;
-  border-radius: 12px;
   background: linear-gradient(135deg, #6366f1, #4f46e5);
   border: none;
   display: flex;
@@ -291,7 +293,7 @@ onMounted(() => {
   transform: scale(0.95);
 }
 
-/* 功能卡片 */
+/* 功能卡片 - 白色/透明，无圆角 */
 .feature-cards {
   display: flex;
   gap: 16px;
@@ -303,11 +305,8 @@ onMounted(() => {
 
 .feature-card {
   flex: 1;
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   padding: 24px;
   display: flex;
   flex-direction: column;
@@ -318,8 +317,8 @@ onMounted(() => {
 }
 
 .feature-card:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 1);
+  border-color: rgba(255, 255, 255, 0.5);
   transform: translateY(-4px);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
 }
@@ -327,7 +326,6 @@ onMounted(() => {
 .feature-icon {
   width: 56px;
   height: 56px;
-  border-radius: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -339,17 +337,14 @@ onMounted(() => {
 .feature-text {
   font-size: 14px;
   font-weight: 600;
-  color: #e2e8f0;
+  color: #1e293b;
 }
 
-/* 宣传横幅 */
+/* 宣传横幅 - 白色/透明，无圆角 */
 .promo-banner {
   margin: 0 20px 32px;
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(236, 72, 153, 0.2));
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   padding: 24px;
   position: relative;
   z-index: 1;
@@ -357,8 +352,9 @@ onMounted(() => {
 }
 
 .promo-banner:hover {
-  border-color: rgba(255, 255, 255, 0.2);
-  box-shadow: 0 12px 40px rgba(99, 102, 241, 0.2);
+  background: rgba(255, 255, 255, 1);
+  border-color: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
 }
 
 .promo-content {
@@ -375,27 +371,25 @@ onMounted(() => {
 .promo-text h3 {
   font-size: 18px;
   font-weight: 700;
-  color: #fff;
+  color: #1e293b;
   margin: 0 0 4px;
 }
 
 .promo-text p {
   font-size: 13px;
-  color: #94a3b8;
+  color: #64748b;
   margin: 0;
 }
 
-/* 底部导航 */
+/* 底部导航 - 白色/透明，无圆角 */
 .bottom-nav {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
   height: 64px;
-  background: rgba(15, 15, 35, 0.8);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.9);
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
   display: flex;
   justify-content: space-around;
   align-items: center;
@@ -429,10 +423,5 @@ onMounted(() => {
 
 .nav-text.active {
   color: #6366f1;
-}
-
-@keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
 }
 </style>
