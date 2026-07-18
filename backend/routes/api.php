@@ -42,6 +42,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/feedback', [SettingsController::class, 'feedback']);
 });
 
+// 公开的文件下载接口（预签名 URL）
+Route::get('/books/file/{token}', [BookController::class, 'serveFile']);
+
 // 管理员路由
 Route::middleware('auth:sanctum')->prefix('admin')->group(function () {
     Route::post('/auth/login', [AdminController::class, 'login']);

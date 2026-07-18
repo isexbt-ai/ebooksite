@@ -33,40 +33,33 @@ const formatSize = (bytes: number) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
 
+/**
+ * 下载书籍 - 预签名 URL 方案
+ *
+ * 1. 先请求 /api/books/download/{id} 获取预签名下载 URL
+ * 2. 浏览器直接访问该 URL 下载文件（交给浏览器处理）
+ */
 const downloadBook = async () => {
   if (!book.value) return
   downloading.value = true
   try {
-    const token = localStorage.getItem('token') || ''
-    const response = await fetch(`/api/books/download/${book.value.id}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-    })
+    const api = useApi()
+    // 1. 请求下载接口获取预签名 URL（同时验证限速和权限）
+    const data = await api.get(`/books/download/${book.value.id}`)
+    const downloadUrl = data.data?.download_url
 
-    if (!response.ok) {
-      const data = await response.json()
-      alert(data.msg || '下载失败')
+    if (!downloadUrl) {
+      alert('获取下载链接失败')
       return
     }
 
-    const disposition = response.headers.get('content-disposition')
-    let filename = book.value.title + '.' + book.value.file_format
-    if (disposition) {
-      const match = disposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/)
-      if (match) {
-        filename = decodeURIComponent(match[1].replace(/['"]/g, ''))
-      }
-    }
-
-    const blob = await response.blob()
-    const url = window.URL.createObjectURL(blob)
+    // 2. 浏览器直接访问预签名 URL 下载文件
     const a = document.createElement('a')
-    a.href = url
-    a.download = filename
+    a.href = downloadUrl
+    a.download = '' // 让浏览器使用服务器提供的文件名
+    a.target = '_blank'
     document.body.appendChild(a)
     a.click()
-    window.URL.revokeObjectURL(url)
     document.body.removeChild(a)
   } catch (e: any) {
     alert('下载失败: ' + (e.message || '未知错误'))
@@ -97,7 +90,7 @@ onMounted(fetchBook)
             <span v-for="tag in book.tags.split(',')" :key="tag" class="tag">{{ tag.trim() }}</span>
           </p>
           <button class="download-btn" :disabled="downloading" @click="downloadBook">
-            {{ downloading ? '下载中...' : '下载书籍' }}
+            {{ downloading ? '获取中...' : '下载书籍' }}
           </button>
         </div>
       </div>

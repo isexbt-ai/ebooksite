@@ -43,41 +43,33 @@ const formatSize = (bytes: number) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
 
+/**
+ * 下载书籍 - 预签名 URL 方案
+ *
+ * 1. 先请求 /api/books/download/{id} 获取预签名下载 URL
+ * 2. 浏览器直接访问该 URL 下载文件（交给浏览器处理）
+ */
 const downloadBook = async (book: any) => {
   downloading.value = book.id
   try {
     const api = useApi()
-    const token = localStorage.getItem('token') || ''
-    const response = await fetch(`/api/books/download/${book.id}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-    })
+    // 1. 请求下载接口获取预签名 URL（同时验证限速和权限）
+    const data = await api.get(`/books/download/${book.id}`)
+    const downloadUrl = data.data?.download_url
 
-    if (!response.ok) {
-      const data = await response.json()
-      alert(data.msg || '下载失败')
+    if (!downloadUrl) {
+      alert('获取下载链接失败')
       return
     }
 
-    // 获取文件名
-    const disposition = response.headers.get('content-disposition')
-    let filename = book.title + '.' + book.file_format
-    if (disposition) {
-      const match = disposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/)
-      if (match) {
-        filename = decodeURIComponent(match[1].replace(/['"]/g, ''))
-      }
-    }
-
-    const blob = await response.blob()
-    const url = window.URL.createObjectURL(blob)
+    // 2. 浏览器直接访问预签名 URL 下载文件
+    // 这种方式让浏览器直接处理下载，不经过前端 JavaScript 处理文件流
     const a = document.createElement('a')
-    a.href = url
-    a.download = filename
+    a.href = downloadUrl
+    a.download = '' // 让浏览器使用服务器提供的文件名
+    a.target = '_blank'
     document.body.appendChild(a)
     a.click()
-    window.URL.revokeObjectURL(url)
     document.body.removeChild(a)
   } catch (e: any) {
     alert('下载失败: ' + (e.message || '未知错误'))
@@ -132,7 +124,7 @@ onMounted(() => {
             :disabled="downloading === book.id"
             @click.stop="downloadBook(book)"
           >
-            {{ downloading === book.id ? '下载中...' : '下载' }}
+            {{ downloading === book.id ? '获取中...' : '下载' }}
           </button>
         </div>
       </div>
