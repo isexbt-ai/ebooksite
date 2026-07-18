@@ -7,6 +7,7 @@ use App\Http\Controllers\BookController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\ScanController;
 
 /*
 |--------------------------------------------------------------------------
@@ -55,4 +56,8 @@ Route::middleware('auth:sanctum')->prefix('admin')->group(function () {
     Route::post('/feedbacks/{id}/delete', [AdminController::class, 'deleteFeedback']);
     Route::get('/settings', [AdminController::class, 'settings']);
     Route::post('/settings', [AdminController::class, 'saveSettings']);
+
+    // 书籍扫描（管理员）
+    Route::post('/scan', [ScanController::class, 'scan']);
+    Route::get('/scan/status', [ScanController::class, 'status']);
 });
