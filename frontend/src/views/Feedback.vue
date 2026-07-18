@@ -34,12 +34,6 @@ const submitFeedback = async () => {
 
 <template>
   <div class="feedback-page">
-    <!-- 背景装饰 -->
-    <div class="bg-decoration">
-      <div class="bg-orb orb-1"></div>
-      <div class="bg-orb orb-2"></div>
-    </div>
-
     <div class="feedback-container">
       <!-- 头部 -->
       <div class="feedback-header">
@@ -47,7 +41,7 @@ const submitFeedback = async () => {
         <p class="subtitle">遇到问题？请告诉我们</p>
       </div>
 
-      <!-- 表单卡片 - 白色/透明，无圆角 -->
+      <!-- 表单卡片 -->
       <div class="feedback-card">
         <div class="feedback-form">
           <div class="form-group">
@@ -96,62 +90,14 @@ const submitFeedback = async () => {
 <style scoped>
 .feedback-page {
   min-height: 100vh;
-  position: relative;
-  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 20px;
-  background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+  background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
 }
 
-/* 背景装饰 */
-.bg-decoration {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  pointer-events: none;
-  z-index: 0;
-  overflow: hidden;
-}
-
-.bg-orb {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(80px);
-  opacity: 0.3;
-}
-
-.orb-1 {
-  width: 300px;
-  height: 300px;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  top: -100px;
-  right: -100px;
-  animation: float 6s ease-in-out infinite;
-}
-
-.orb-2 {
-  width: 200px;
-  height: 200px;
-  background: linear-gradient(135deg, #ec4899, #f43f5e);
-  bottom: -50px;
-  left: -50px;
-  animation: float 8s ease-in-out infinite;
-  animation-delay: -2s;
-}
-
-@keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
-}
-
-/* 容器 */
 .feedback-container {
-  position: relative;
-  z-index: 1;
   width: 100%;
   max-width: 600px;
   animation: fadeIn 0.6s ease-out;
@@ -166,32 +112,28 @@ const submitFeedback = async () => {
 .feedback-header h1 {
   font-size: 28px;
   font-weight: 700;
-  background: linear-gradient(135deg, #fff, #a5b4fc);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #1e293b;
   margin: 0 0 8px;
 }
 
 .subtitle {
-  color: #94a3b8;
+  color: #64748b;
   font-size: 14px;
   margin: 0;
 }
 
-/* 卡片 - 白色/透明，无圆角 */
+/* 卡片 */
 .feedback-card {
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
   padding: 32px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   transition: all 0.3s ease;
 }
 
 .feedback-card:hover {
-  background: rgba(255, 255, 255, 1);
-  border-color: rgba(255, 255, 255, 0.5);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+  border-color: #cbd5e1;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
 }
 
 /* 表单 */
@@ -219,7 +161,7 @@ const submitFeedback = async () => {
 
 .form-group input,
 .form-group textarea {
-  background: rgba(255, 255, 255, 0.8);
+  background: #f8fafc;
   border: 1px solid #e2e8f0;
   padding: 12px 16px;
   color: #1e293b;
@@ -233,8 +175,8 @@ const submitFeedback = async () => {
 .form-group textarea:focus {
   outline: none;
   border-color: #6366f1;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
-  background: rgba(255, 255, 255, 1);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  background: #ffffff;
 }
 
 .form-group input::placeholder,
@@ -249,16 +191,16 @@ const submitFeedback = async () => {
 
 /* 消息 */
 .error-message {
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.05);
+  border: 1px solid rgba(239, 68, 68, 0.2);
   padding: 12px 16px;
   color: #ef4444;
   font-size: 13px;
 }
 
 .success-message {
-  background: rgba(16, 185, 129, 0.1);
-  border: 1px solid rgba(16, 185, 129, 0.3);
+  background: rgba(16, 185, 129, 0.05);
+  border: 1px solid rgba(16, 185, 129, 0.2);
   padding: 12px 16px;
   color: #10b981;
   font-size: 13px;
@@ -285,13 +227,11 @@ const submitFeedback = async () => {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  position: relative;
-  overflow: hidden;
 }
 
 .submit-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(99, 102, 241, 0.4);
+  box-shadow: 0 8px 25px rgba(99, 102, 241, 0.3);
 }
 
 .submit-btn:disabled {
@@ -320,7 +260,7 @@ const submitFeedback = async () => {
 }
 
 .footer-info p {
-  color: #94a3b8;
+  color: #64748b;
   font-size: 13px;
 }
 

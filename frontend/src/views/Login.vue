@@ -43,13 +43,6 @@ const handleLogin = async () => {
 
 <template>
   <div class="login-page">
-    <!-- 背景装饰 -->
-    <div class="bg-decoration">
-      <div class="bg-orb orb-1"></div>
-      <div class="bg-orb orb-2"></div>
-      <div class="bg-orb orb-3"></div>
-    </div>
-
     <div class="login-card">
       <div class="login-header">
         <span class="logo-icon">📚</span>
@@ -101,82 +94,19 @@ const handleLogin = async () => {
   align-items: center;
   justify-content: center;
   padding: 20px;
-  position: relative;
-  overflow: hidden;
-  background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+  background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
 }
 
-/* 背景装饰 */
-.bg-decoration {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  pointer-events: none;
-  z-index: 0;
-  overflow: hidden;
-}
-
-.bg-orb {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(80px);
-  opacity: 0.3;
-}
-
-.orb-1 {
-  width: 300px;
-  height: 300px;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  top: -100px;
-  right: -100px;
-  animation: float 6s ease-in-out infinite;
-}
-
-.orb-2 {
-  width: 200px;
-  height: 200px;
-  background: linear-gradient(135deg, #3b82f6, #06b6d4);
-  bottom: -50px;
-  left: -50px;
-  animation: float 8s ease-in-out infinite;
-  animation-delay: -2s;
-}
-
-.orb-3 {
-  width: 150px;
-  height: 150px;
-  background: linear-gradient(135deg, #ec4899, #f43f5e);
-  top: 50%;
-  right: 10%;
-  animation: float 7s ease-in-out infinite;
-  animation-delay: -4s;
-}
-
-@keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
-}
-
-/* 登录卡片 - 白色/透明，无圆角 */
 .login-card {
-  position: relative;
-  z-index: 1;
   width: 100%;
   max-width: 420px;
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(0, 0, 0, 0.08);
   padding: 40px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   animation: fadeIn 0.6s ease-out;
 }
 
-.login-card:hover {
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
-}
-
-/* 头部 */
 .login-header {
   text-align: center;
   margin-bottom: 32px;
@@ -201,7 +131,6 @@ const handleLogin = async () => {
   margin: 0;
 }
 
-/* 表单 */
 .login-form {
   display: flex;
   flex-direction: column;
@@ -221,7 +150,7 @@ const handleLogin = async () => {
 }
 
 .form-group input {
-  background: rgba(255, 255, 255, 0.8);
+  background: #f8fafc;
   border: 1px solid #e2e8f0;
   padding: 12px 16px;
   color: #1e293b;
@@ -234,24 +163,22 @@ const handleLogin = async () => {
 .form-group input:focus {
   outline: none;
   border-color: #6366f1;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
-  background: rgba(255, 255, 255, 1);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  background: #ffffff;
 }
 
 .form-group input::placeholder {
   color: #94a3b8;
 }
 
-/* 错误消息 */
 .error-message {
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.05);
+  border: 1px solid rgba(239, 68, 68, 0.2);
   padding: 12px 16px;
   color: #ef4444;
   font-size: 13px;
 }
 
-/* 登录按钮 */
 .login-btn {
   background: linear-gradient(135deg, #6366f1, #4f46e5);
   border: none;
@@ -265,13 +192,11 @@ const handleLogin = async () => {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  position: relative;
-  overflow: hidden;
 }
 
 .login-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(99, 102, 241, 0.4);
+  box-shadow: 0 8px 25px rgba(99, 102, 241, 0.3);
 }
 
 .login-btn:disabled {
@@ -293,7 +218,6 @@ const handleLogin = async () => {
   to { transform: rotate(360deg); }
 }
 
-/* 注册链接 */
 .register-link {
   text-align: center;
   font-size: 14px;
@@ -304,7 +228,6 @@ const handleLogin = async () => {
   color: #6366f1;
   text-decoration: none;
   font-weight: 500;
-  transition: all 0.3s ease;
 }
 
 .register-link a:hover {

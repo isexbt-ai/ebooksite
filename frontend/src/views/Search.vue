@@ -84,12 +84,6 @@ onMounted(() => {
 
 <template>
   <div class="search-page">
-    <!-- 背景装饰 -->
-    <div class="bg-decoration">
-      <div class="bg-orb orb-1"></div>
-      <div class="bg-orb orb-2"></div>
-    </div>
-
     <div class="search-container">
       <!-- 头部 -->
       <div class="search-header">
@@ -97,7 +91,7 @@ onMounted(() => {
         <p class="subtitle">发现你想要的书籍</p>
       </div>
 
-      <!-- 搜索框 - 白色/透明，无圆角 -->
+      <!-- 搜索框 -->
       <div class="search-box">
         <div class="search-input-wrapper">
           <span class="search-icon">🔍</span>
@@ -161,7 +155,7 @@ onMounted(() => {
           </div>
         </div>
 
-        <!-- 分页 - 白色/透明，无圆角 -->
+        <!-- 分页 -->
         <div class="pagination">
           <button
             :disabled="page <= 1"
@@ -187,59 +181,11 @@ onMounted(() => {
 <style scoped>
 .search-page {
   min-height: 100vh;
-  position: relative;
-  overflow: hidden;
   padding: 20px;
-  background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+  background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
 }
 
-/* 背景装饰 */
-.bg-decoration {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  pointer-events: none;
-  z-index: 0;
-  overflow: hidden;
-}
-
-.bg-orb {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(80px);
-  opacity: 0.3;
-}
-
-.orb-1 {
-  width: 300px;
-  height: 300px;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  top: -100px;
-  right: -100px;
-  animation: float 6s ease-in-out infinite;
-}
-
-.orb-2 {
-  width: 200px;
-  height: 200px;
-  background: linear-gradient(135deg, #3b82f6, #06b6d4);
-  bottom: 200px;
-  left: -50px;
-  animation: float 8s ease-in-out infinite;
-  animation-delay: -2s;
-}
-
-@keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
-}
-
-/* 容器 */
 .search-container {
-  position: relative;
-  z-index: 1;
   max-width: 800px;
   margin: 0 auto;
   animation: fadeIn 0.6s ease-out;
@@ -255,20 +201,17 @@ onMounted(() => {
 .search-header h1 {
   font-size: 28px;
   font-weight: 700;
-  background: linear-gradient(135deg, #fff, #a5b4fc);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #1e293b;
   margin: 0 0 8px;
 }
 
 .subtitle {
-  color: #94a3b8;
+  color: #64748b;
   font-size: 14px;
   margin: 0;
 }
 
-/* 搜索框 - 白色/透明，无圆角 */
+/* 搜索框 */
 .search-box {
   margin-bottom: 32px;
 }
@@ -277,20 +220,20 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 12px;
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
   padding: 4px 4px 4px 16px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   transition: all 0.3s ease;
 }
 
 .search-input-wrapper:hover {
-  border-color: rgba(255, 255, 255, 0.5);
+  border-color: #cbd5e1;
 }
 
 .search-input-wrapper:focus-within {
   border-color: #6366f1;
-  box-shadow: 0 8px 32px rgba(99, 102, 241, 0.3);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
 }
 
 .search-icon {
@@ -328,7 +271,7 @@ onMounted(() => {
 
 .search-input-wrapper button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(99, 102, 241, 0.4);
+  box-shadow: 0 8px 25px rgba(99, 102, 241, 0.3);
 }
 
 .search-input-wrapper button:disabled {
@@ -341,13 +284,13 @@ onMounted(() => {
 .loading-state {
   text-align: center;
   padding: 60px 20px;
-  color: #94a3b8;
+  color: #64748b;
 }
 
 .loading-spinner {
   width: 40px;
   height: 40px;
-  border: 3px solid rgba(255, 255, 255, 0.1);
+  border: 3px solid #e2e8f0;
   border-top-color: #6366f1;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
@@ -362,7 +305,7 @@ onMounted(() => {
 .empty-state {
   text-align: center;
   padding: 60px 20px;
-  color: #94a3b8;
+  color: #64748b;
 }
 
 .empty-icon {
@@ -378,7 +321,7 @@ onMounted(() => {
 
 .empty-hint {
   font-size: 13px;
-  color: #64748b;
+  color: #94a3b8;
 }
 
 /* 结果区域 */
@@ -391,7 +334,7 @@ onMounted(() => {
 }
 
 .total {
-  color: #94a3b8;
+  color: #64748b;
   font-size: 14px;
   margin: 0;
 }
@@ -401,7 +344,7 @@ onMounted(() => {
   font-weight: 600;
 }
 
-/* 书籍卡片 - 白色/透明，无圆角 */
+/* 书籍卡片 */
 .results {
   display: flex;
   flex-direction: column;
@@ -412,29 +355,29 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 16px;
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
   padding: 16px;
   cursor: pointer;
   transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .book-card:hover {
-  background: rgba(255, 255, 255, 1);
-  border-color: rgba(255, 255, 255, 0.5);
+  border-color: #cbd5e1;
   transform: translateY(-2px);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
 }
 
 .book-cover {
   width: 56px;
   height: 72px;
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(139, 92, 246, 0.2));
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.2);
 }
 
 .cover-icon {
@@ -469,7 +412,7 @@ onMounted(() => {
 
 .book-meta .format {
   padding: 2px 8px;
-  background: rgba(99, 102, 241, 0.2);
+  background: rgba(99, 102, 241, 0.1);
   font-size: 11px;
   color: #6366f1;
   font-weight: 500;
@@ -502,7 +445,7 @@ onMounted(() => {
 
 .download-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
 }
 
 .download-btn:disabled {
@@ -520,7 +463,7 @@ onMounted(() => {
   animation: spin 0.8s linear infinite;
 }
 
-/* 分页 - 白色/透明，无圆角 */
+/* 分页 */
 .pagination {
   display: flex;
   justify-content: center;
@@ -532,17 +475,18 @@ onMounted(() => {
 
 .page-btn {
   padding: 8px 16px;
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
   color: #1e293b;
   font-size: 13px;
   cursor: pointer;
   transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .page-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 1);
-  border-color: rgba(255, 255, 255, 0.5);
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .page-btn:disabled {
@@ -551,7 +495,7 @@ onMounted(() => {
 }
 
 .page-info {
-  color: #94a3b8;
+  color: #64748b;
   font-size: 14px;
 }
 
