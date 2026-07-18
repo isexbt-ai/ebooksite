@@ -31,7 +31,7 @@ const handleChangePassword = async () => {
   try {
     const api = useApi()
     await api.post('/user/password', {
-      current_password: currentPassword.value,
+      old_password: currentPassword.value,
       new_password: newPassword.value,
     })
     success.value = '密码修改成功'

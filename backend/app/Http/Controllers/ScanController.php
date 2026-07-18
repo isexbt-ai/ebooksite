@@ -201,7 +201,7 @@ class ScanController extends Controller
             'err' => 'ok',
             'data' => [
                 'total_books' => $totalBooks,
-                'last_scan_at' => $latestBook ? $latestBook->indexed_at->toDateTimeString() : null,
+                'last_scan_at' => $latestBook && $latestBook->indexed_at ? $latestBook->indexed_at->toDateTimeString() : null,
             ],
         ]);
     }

@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useApi } from '@/composables/useApi'
 
 const route = useRoute()
+const router = useRouter()
 const query = ref('')
 const results = ref<any[]>([])
 const loading = ref(false)
@@ -11,6 +12,7 @@ const searched = ref(false)
 const page = ref(1)
 const total = ref(0)
 const pageSize = ref(20)
+const downloading = ref<number | null>(null)
 
 const doSearch = async () => {
   if (!query.value.trim()) return
@@ -41,6 +43,53 @@ const formatSize = (bytes: number) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
 
+const downloadBook = async (book: any) => {
+  downloading.value = book.id
+  try {
+    const api = useApi()
+    const token = localStorage.getItem('token') || ''
+    const response = await fetch(`/api/books/download/${book.id}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    })
+
+    if (!response.ok) {
+      const data = await response.json()
+      alert(data.msg || '下载失败')
+      return
+    }
+
+    // 获取文件名
+    const disposition = response.headers.get('content-disposition')
+    let filename = book.title + '.' + book.file_format
+    if (disposition) {
+      const match = disposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/)
+      if (match) {
+        filename = decodeURIComponent(match[1].replace(/['"]/g, ''))
+      }
+    }
+
+    const blob = await response.blob()
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    window.URL.revokeObjectURL(url)
+    document.body.removeChild(a)
+  } catch (e: any) {
+    alert('下载失败: ' + (e.message || '未知错误'))
+  } finally {
+    downloading.value = null
+  }
+}
+
+const goToDetail = (bookId: number) => {
+  router.push(`/books/${bookId}`)
+}
+
 // 从 URL 参数获取搜索词
 onMounted(() => {
   const q = route.query.query as string
@@ -67,12 +116,24 @@ onMounted(() => {
     <div v-else-if="results.length > 0">
       <p class="total">共找到 {{ total }} 本相关书籍</p>
       <div class="results">
-        <div v-for="book in results" :key="book.id" class="book-item">
+        <div
+          v-for="book in results"
+          :key="book.id"
+          class="book-item"
+          @click="goToDetail(book.id)"
+        >
           <div class="book-info">
             <h3>{{ book.title }}</h3>
             <p class="author">{{ book.author || '未知作者' }}</p>
             <p class="meta">{{ book.file_format?.toUpperCase() }} · {{ formatSize(book.file_size) }}</p>
           </div>
+          <button
+            class="download-btn"
+            :disabled="downloading === book.id"
+            @click.stop="downloadBook(book)"
+          >
+            {{ downloading === book.id ? '下载中...' : '下载' }}
+          </button>
         </div>
       </div>
 
@@ -101,13 +162,23 @@ h1 { margin-bottom: 20px; color: #333; }
 
 .results { display: flex; flex-direction: column; gap: 12px; }
 .book-item {
+  display: flex; align-items: center; justify-content: space-between;
   background: white; border: 1px solid #e9ecef; border-radius: 8px;
-  padding: 16px; transition: box-shadow 0.2s;
+  padding: 16px; transition: box-shadow 0.2s; cursor: pointer;
 }
 .book-item:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-.book-item h3 { margin: 0 0 4px 0; color: #333; font-size: 16px; }
+.book-info { flex: 1; min-width: 0; }
+.book-item h3 { margin: 0 0 4px 0; color: #333; font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .book-item .author { margin: 0; color: #6c757d; font-size: 14px; }
 .book-item .meta { margin: 4px 0 0 0; color: #adb5bd; font-size: 12px; }
+
+.download-btn {
+  padding: 8px 16px; background: #28a745; color: white; border: none;
+  border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;
+  flex-shrink: 0; margin-left: 12px;
+}
+.download-btn:hover { background: #218838; }
+.download-btn:disabled { background: #6c757d; cursor: not-allowed; }
 
 .pagination { display: flex; justify-content: center; align-items: center; gap: 16px; margin-top: 20px; padding: 12px; }
 .pagination button { padding: 6px 14px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; }

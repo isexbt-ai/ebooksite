@@ -12,6 +12,8 @@ import AdminUsers from '@/views/admin/AdminUsers.vue'
 import AdminCards from '@/views/admin/AdminCards.vue'
 import AdminBooks from '@/views/admin/AdminBooks.vue'
 import AdminSettings from '@/views/admin/AdminSettings.vue'
+import BookDetail from '@/views/BookDetail.vue'
+import AdminLayout from '@/layouts/AdminLayout.vue'
 import AdminFeedbacks from '@/views/admin/AdminFeedbacks.vue'
 
 const routes = [
@@ -19,15 +21,23 @@ const routes = [
   { path: '/login', name: 'Login', component: Login, meta: { guest: true } },
   { path: '/register', name: 'Register', component: Register, meta: { guest: true } },
   { path: '/search', name: 'Search', component: Search },
+  { path: '/books/:id', name: 'BookDetail', component: BookDetail, meta: { requiresAuth: true } },
   { path: '/settings', name: 'Settings', component: Settings, meta: { requiresAuth: true } },
   { path: '/feedback', name: 'Feedback', component: Feedback },
   { path: '/admin/login', name: 'AdminLogin', component: AdminLogin, meta: { guest: true } },
-  { path: '/admin', name: 'AdminDashboard', component: AdminDashboard, meta: { requiresAdmin: true } },
-  { path: '/admin/users', name: 'AdminUsers', component: AdminUsers, meta: { requiresAdmin: true } },
-  { path: '/admin/cards', name: 'AdminCards', component: AdminCards, meta: { requiresAdmin: true } },
-  { path: '/admin/books', name: 'AdminBooks', component: AdminBooks, meta: { requiresAdmin: true } },
-  { path: '/admin/settings', name: 'AdminSettings', component: AdminSettings, meta: { requiresAdmin: true } },
-  { path: '/admin/feedbacks', name: 'AdminFeedbacks', component: AdminFeedbacks, meta: { requiresAdmin: true } },
+  {
+    path: '/admin',
+    component: AdminLayout,
+    meta: { requiresAdmin: true },
+    children: [
+      { path: '', name: 'AdminDashboard', component: AdminDashboard },
+      { path: 'users', name: 'AdminUsers', component: AdminUsers },
+      { path: 'cards', name: 'AdminCards', component: AdminCards },
+      { path: 'books', name: 'AdminBooks', component: AdminBooks },
+      { path: 'settings', name: 'AdminSettings', component: AdminSettings },
+      { path: 'feedbacks', name: 'AdminFeedbacks', component: AdminFeedbacks },
+    ],
+  },
 ]
 
 const router = createRouter({
