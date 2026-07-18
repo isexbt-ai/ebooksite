@@ -46,8 +46,9 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::get('/books/file/{token}', [BookController::class, 'serveFile']);
 
 // 管理员路由
+Route::post('/admin/auth/login', [AdminController::class, 'login']);
+
 Route::middleware('auth:sanctum')->prefix('admin')->group(function () {
-    Route::post('/auth/login', [AdminController::class, 'login']);
     Route::get('/stats', [AdminController::class, 'stats']);
     Route::get('/users', [AdminController::class, 'users']);
     Route::post('/users/{id}/delete', [AdminController::class, 'deleteUser']);

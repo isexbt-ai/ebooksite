@@ -13,6 +13,7 @@ const confirmPassword = ref('')
 const loading = ref(false)
 const error = ref('')
 const success = ref('')
+const showPasswordForm = ref(false)
 
 const handleChangePassword = async () => {
   if (!currentPassword.value || !newPassword.value || !confirmPassword.value) {
@@ -38,6 +39,10 @@ const handleChangePassword = async () => {
     currentPassword.value = ''
     newPassword.value = ''
     confirmPassword.value = ''
+    setTimeout(() => {
+      showPasswordForm.value = false
+      success.value = ''
+    }, 2000)
   } catch (e: any) {
     error.value = e.message || '修改失败'
   } finally {
@@ -60,7 +65,7 @@ onMounted(() => {
     <div class="settings-container">
       <!-- 头部 -->
       <div class="settings-header">
-        <h1>⚙️ 设置</h1>
+        <h1>👤 我的</h1>
         <p class="subtitle">管理您的账户</p>
       </div>
 
@@ -74,9 +79,32 @@ onMounted(() => {
           </div>
         </div>
 
-        <!-- 修改密码卡片 -->
-        <div class="password-card">
-          <h3>🔒 修改密码</h3>
+        <!-- 卡密信息 -->
+        <div class="card-info">
+          <h3>🎫 卡密信息</h3>
+          <div class="info-item">
+            <span class="label">用户名</span>
+            <span class="value">{{ authStore.user?.username }}</span>
+          </div>
+          <div class="info-item">
+            <span class="label">有效期</span>
+            <span class="value">{{ authStore.user?.expiry_date || '永久' }}</span>
+          </div>
+          <div class="info-item">
+            <span class="label">管理员</span>
+            <span class="value">{{ authStore.user?.admin ? '是' : '否' }}</span>
+          </div>
+        </div>
+
+        <!-- 修改密码入口 -->
+        <div class="password-entry" @click="showPasswordForm = !showPasswordForm">
+          <span class="entry-icon">🔒</span>
+          <span class="entry-text">修改密码</span>
+          <span class="entry-arrow">{{ showPasswordForm ? '▼' : '▶' }}</span>
+        </div>
+
+        <!-- 修改密码表单 -->
+        <div v-if="showPasswordForm" class="password-form">
           <div class="form-group">
             <label>当前密码</label>
             <input
@@ -197,8 +225,8 @@ onMounted(() => {
   font-size: 14px;
 }
 
-/* 密码卡片 */
-.password-card {
+/* 卡密信息 */
+.card-info {
   background: #ffffff;
   border: 1px solid #e2e8f0;
   padding: 24px;
@@ -207,18 +235,90 @@ onMounted(() => {
   transition: all 0.3s ease;
 }
 
-.password-card:hover {
+.card-info:hover {
   border-color: #cbd5e1;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-.password-card h3 {
-  margin: 0 0 20px;
+.card-info h3 {
+  margin: 0 0 16px;
   color: #1e293b;
   font-size: 18px;
 }
 
-/* 表单 */
+.info-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.info-item:last-child {
+  border-bottom: none;
+}
+
+.info-item .label {
+  color: #64748b;
+  font-size: 14px;
+}
+
+.info-item .value {
+  color: #1e293b;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* 修改密码入口 */
+.password-entry {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  padding: 16px 24px;
+  margin-bottom: 16px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.password-entry:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.entry-icon {
+  font-size: 20px;
+}
+
+.entry-text {
+  flex: 1;
+  color: #1e293b;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.entry-arrow {
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+/* 密码表单 */
+.password-form {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 .form-group {
   display: flex;
   flex-direction: column;
