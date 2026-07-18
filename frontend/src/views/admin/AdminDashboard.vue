@@ -13,6 +13,7 @@ const navItems = [
   { name: '卡密管理', path: '/admin/cards', icon: '🔑', count: () => stats.value.total_cards },
   { name: '反馈管理', path: '/admin/feedbacks', icon: '💬', count: () => null },
   { name: '系统设置', path: '/admin/settings', icon: '⚙️', count: () => null },
+  { name: '扫描书籍', path: '/admin/books', icon: '🔍', count: () => null },
 ]
 
 const fetchStats = async () => {
@@ -91,12 +92,12 @@ h1 { margin: 0 0 4px 0; color: #333; font-size: 28px; }
 .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 32px; }
 .stat-card {
   display: flex; align-items: center; gap: 16px;
-  background: white; border: 1px solid #e9ecef; border-radius: 12px;
+  background: white; border: 1px solid #e9ecef;
   padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);
   transition: transform 0.2s, box-shadow 0.2s;
 }
 .stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
-.stat-icon { font-size: 32px; width: 52px; height: 52px; display: flex; align-items: center; justify-content: center; border-radius: 12px; }
+.stat-icon { font-size: 32px; width: 52px; height: 52px; display: flex; align-items: center; justify-content: center; }
 .stat-icon.users { background: #e3f2fd; }
 .stat-icon.books { background: #e8f5e9; }
 .stat-icon.cards { background: #fff3e0; }
@@ -108,7 +109,7 @@ h1 { margin: 0 0 4px 0; color: #333; font-size: 28px; }
 .nav-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; }
 .nav-card {
   display: flex; flex-direction: column; align-items: center; gap: 8px;
-  background: white; border: 1px solid #e9ecef; border-radius: 12px;
+  background: white; border: 1px solid #e9ecef;
   padding: 24px; cursor: pointer;
   transition: transform 0.2s, box-shadow 0.2s;
   position: relative;
@@ -120,6 +121,6 @@ h1 { margin: 0 0 4px 0; color: #333; font-size: 28px; }
   position: absolute; top: 12px; right: 12px;
   background: #007bff; color: white;
   font-size: 12px; font-weight: 600;
-  padding: 2px 8px; border-radius: 12px;
+  padding: 2px 8px;
 }
 </style>
