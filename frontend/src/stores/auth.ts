@@ -28,6 +28,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   const setUser = (userData: User) => {
     user.value = userData
+    localStorage.setItem('user', JSON.stringify(userData))
   }
 
   const setToken = (newToken: string) => {
@@ -40,6 +41,14 @@ export const useAuthStore = defineStore('auth', () => {
     if (stored) {
       token.value = stored
     }
+    const userData = localStorage.getItem('user')
+    if (userData) {
+      try {
+        user.value = JSON.parse(userData)
+      } catch (e) {
+        console.error('解析用户信息失败:', e)
+      }
+    }
   }
 
   const logout = () => {
@@ -47,6 +56,7 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = ''
     localStorage.removeItem('token')
     localStorage.removeItem('admin_token')
+    localStorage.removeItem('user')
   }
 
   const fetchUser = async () => {
