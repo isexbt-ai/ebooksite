@@ -24,7 +24,7 @@ const handleRegister = async () => {
 
   try {
     const api = useApi()
-    const data = await api.post('/auth/register', {
+    const data = await api.post('/register', {
       username: username.value,
       password: password.value,
       card_code: cardCode.value,

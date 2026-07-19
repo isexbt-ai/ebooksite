@@ -54,7 +54,7 @@ export const useAuthStore = defineStore('auth', () => {
       const { get } = await import('@/composables/useApi')
       const { useApi } = await import('@/composables/useApi')
       const api = useApi()
-      const data = await api.get('/auth/me')
+      const data = await api.get('/user')
       if (data.data) {
         setUser(data.data)
       }

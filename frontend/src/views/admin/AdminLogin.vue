@@ -21,7 +21,7 @@ const login = async () => {
 
   try {
     const API_BASE = import.meta.env.VITE_API_BASE || '/api'
-    const response = await fetch(`${API_BASE}/admin/auth/login`, {
+    const response = await fetch(`${API_BASE}/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

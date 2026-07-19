@@ -6,13 +6,14 @@ import Register from '@/views/Register.vue'
 import Search from '@/views/Search.vue'
 import Settings from '@/views/Settings.vue'
 import Feedback from '@/views/Feedback.vue'
+import BookDetail from '@/views/BookDetail.vue'
+import BookUpload from '@/views/BookUpload.vue'
 import AdminLogin from '@/views/admin/AdminLogin.vue'
 import AdminDashboard from '@/views/admin/AdminDashboard.vue'
 import AdminUsers from '@/views/admin/AdminUsers.vue'
 import AdminCards from '@/views/admin/AdminCards.vue'
 import AdminBooks from '@/views/admin/AdminBooks.vue'
 import AdminSettings from '@/views/admin/AdminSettings.vue'
-import BookDetail from '@/views/BookDetail.vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import AdminFeedbacks from '@/views/admin/AdminFeedbacks.vue'
 
@@ -22,6 +23,7 @@ const routes = [
   { path: '/register', name: 'Register', component: Register, meta: { guest: true } },
   { path: '/search', name: 'Search', component: Search },
   { path: '/books/:id', name: 'BookDetail', component: BookDetail, meta: { requiresAuth: true } },
+  { path: '/upload', name: 'BookUpload', component: BookUpload, meta: { requiresAuth: true } },
   { path: '/settings', name: 'Settings', component: Settings, meta: { requiresAuth: true } },
   { path: '/feedback', name: 'Feedback', component: Feedback },
   { path: '/admin/login', name: 'AdminLogin', component: AdminLogin, meta: { guest: true } },
@@ -45,30 +47,33 @@ const router = createRouter({
   routes,
 })
 
-// 路由守卫
 router.beforeEach((to, from, next) => {
   const authStore = useAuthStore()
-  const isLoggedIn = authStore.isLoggedIn
-  const isAdmin = authStore.isAdmin
-
-  // 需要管理员权限
-  if (to.meta.requiresAdmin && !isAdmin) {
-    next('/admin/login')
-    return
-  }
-
-  // 需要登录
-  if (to.meta.requiresAuth && !isLoggedIn) {
+  const token = localStorage.getItem('token')
+  
+  if (to.meta.requiresAuth && !token) {
     next('/login')
     return
   }
-
-  // 游客专属页面（登录后不能访问）
-  if (to.meta.guest && isLoggedIn) {
+  
+  if (to.meta.guest && token) {
     next('/')
     return
   }
-
+  
+  if (to.meta.requiresAdmin) {
+    if (!token) {
+      next('/admin/login')
+      return
+    }
+    // 检查是否是管理员
+    const user = JSON.parse(localStorage.getItem('user') || '{}')
+    if (!user.is_admin) {
+      next('/')
+      return
+    }
+  }
+  
   next()
 })
 
