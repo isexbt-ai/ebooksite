@@ -68,7 +68,7 @@ router.beforeEach((to, from, next) => {
     }
     // 检查是否是管理员
     const user = JSON.parse(localStorage.getItem('user') || '{}')
-    if (!user.is_admin) {
+    if (!user.admin) {
       next('/')
       return
     }
