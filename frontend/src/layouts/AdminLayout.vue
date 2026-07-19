@@ -13,6 +13,7 @@ const navItems = [
   { name: '仪表盘', path: '/admin', icon: '📊' },
   { name: '用户管理', path: '/admin/users', icon: '👤' },
   { name: '书籍管理', path: '/admin/books', icon: '📚' },
+  { name: '批量上传', path: '/admin/batch-upload', icon: '📤' },
   { name: '卡密管理', path: '/admin/cards', icon: '🔑' },
   { name: '反馈管理', path: '/admin/feedbacks', icon: '💬' },
   { name: '系统设置', path: '/admin/settings', icon: '⚙️' },

@@ -324,4 +324,114 @@ class BookUploadController extends Controller
             'errors'  => $errors,
         ]);
     }
+
+
+    public function batchUploadWithDedup(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'files' => 'required|array',
+            'files.*' => 'required|file|mimes:txt,epub,pdf,mobi,azw3|max:52428800',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $results = [];
+        $duplicates = [];
+        $errors = [];
+
+        foreach ($request->file('files') as $index => $file) {
+            try {
+                $fileHash = hash_file('md5', $file->getRealPath());
+                $fileSize = $file->getSize();
+                
+                $existingBook = Book::where('file_hash', $fileHash)->first();
+                
+                if ($existingBook) {
+                    if ($fileSize > $existingBook->file_size) {
+                        $this->r2->delete($existingBook->r2_key);
+                        
+                        $extension = $file->getClientOriginalExtension();
+                        $key = sprintf(
+                            'novels/%s/%s_%s.%s',
+                            date('Y/m'),
+                            Str::slug($existingBook->title),
+                            uniqid(),
+                            $extension
+                        );
+                        
+                        $url = $this->r2->upload($file->getRealPath(), $key, $file->getMimeType());
+                        
+                        if ($url) {
+                            $existingBook->update([
+                                'r2_key'    => $key,
+                                'r2_url'    => $url,
+                                'file_size' => $fileSize,
+                                'file_hash' => $fileHash,
+                            ]);
+                            $duplicates[] = [
+                                'index' => $index,
+                                'title' => $existingBook->title,
+                                'action' => 'replaced',
+                            ];
+                        }
+                    } else {
+                        $duplicates[] = [
+                            'index' => $index,
+                            'title' => $existingBook->title,
+                            'action' => 'skipped',
+                        ];
+                    }
+                    continue;
+                }
+
+                $extension = $file->getClientOriginalExtension();
+                $title = $request->input("titles.$index", $file->getClientOriginalName());
+                $author = $request->input("authors.$index", 'Unknown');
+                
+                $key = sprintf(
+                    'novels/%s/%s_%s.%s',
+                    date('Y/m'),
+                    Str::slug($title),
+                    uniqid(),
+                    $extension
+                );
+
+                $url = $this->r2->upload($file->getRealPath(), $key, $file->getMimeType());
+
+                if (!$url) {
+                    $errors[] = ['index' => $index, 'message' => 'R2上传失败'];
+                    continue;
+                }
+
+                $book = Book::create([
+                    'title'         => $title,
+                    'author'        => $author,
+                    'r2_key'        => $key,
+                    'r2_url'        => $url,
+                    'file_size'     => $fileSize,
+                    'file_hash'     => $fileHash,
+                    'mime_type'     => $file->getMimeType(),
+                    'upload_status' => 'completed',
+                    'uploader_id'   => auth()->id(),
+                ]);
+
+                $results[] = $book;
+            } catch (\Exception $e) {
+                $errors[] = ['index' => $index, 'message' => $e->getMessage()];
+            }
+        }
+
+        return response()->json([
+            'err'        => 'ok',
+            'message'    => '批量上传完成',
+            'success'    => count($results),
+            'duplicates' => count($duplicates),
+            'failed'     => count($errors),
+            'books'      => $results,
+            'dup_list'   => $duplicates,
+            'errors'     => $errors,
+        ]);
+    }
 }

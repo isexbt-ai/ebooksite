@@ -231,4 +231,37 @@ class AdminController extends Controller
 
         return response()->json(['err' => 'ok']);
     }
+
+    /**
+     * 创建卡密
+     */
+    public function createCard(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'count' => 'required|integer|min:1|max:100',
+            'duration_days' => 'required|integer|min:1',
+        ]);
+
+        $cards = [];
+        $count = $validated['count'];
+        $durationDays = $validated['duration_days'];
+
+        for ($i = 0; $i < $count; $i++) {
+            $code = strtoupper(substr(md5(uniqid()), 0, 16));
+            $card = Card::create([
+                'code' => $code,
+                'duration_days' => $durationDays,
+                'used' => false,
+            ]);
+            $cards[] = $card;
+        }
+
+        return response()->json([
+            'err' => 'ok',
+            'data' => [
+                'count' => count($cards),
+                'codes' => array_map(fn($c) => $c->code, $cards),
+            ],
+        ]);
+    }
 }

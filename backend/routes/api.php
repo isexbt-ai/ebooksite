@@ -52,7 +52,8 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::get('/users', [AdminController::class, 'users']);
     Route::get('/books', [AdminController::class, 'books']);
     Route::get('/settings', [AdminController::class, 'settings']);
-    Route::put('/settings', [AdminController::class, 'updateSettings']);
+    Route::put('/settings', [AdminController::class, 'saveSettings']);
+    Route::post('/cards', [AdminController::class, 'createCard']);
 });
 
 // 系统设置
@@ -65,3 +66,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/profile', [UserController::class, 'updateProfile']);
     Route::get('/downloads', [UserController::class, 'downloads']);
 });
+
+// 反馈路由（公开）
+Route::post('/feedback', [SettingsController::class, 'feedback']);
+
+// 批量上传（带去重）
+Route::middleware('auth:sanctum')->post('/books/batch-upload-dedup', [BookUploadController::class, 'batchUploadWithDedup']);

@@ -13,6 +13,7 @@ import AdminDashboard from '@/views/admin/AdminDashboard.vue'
 import AdminUsers from '@/views/admin/AdminUsers.vue'
 import AdminCards from '@/views/admin/AdminCards.vue'
 import AdminBooks from '@/views/admin/AdminBooks.vue'
+import AdminBatchUpload from '@/views/admin/AdminBatchUpload.vue'
 import AdminSettings from '@/views/admin/AdminSettings.vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import AdminFeedbacks from '@/views/admin/AdminFeedbacks.vue'
@@ -36,6 +37,7 @@ const routes = [
       { path: 'users', name: 'AdminUsers', component: AdminUsers },
       { path: 'cards', name: 'AdminCards', component: AdminCards },
       { path: 'books', name: 'AdminBooks', component: AdminBooks },
+      { path: 'batch-upload', name: 'AdminBatchUpload', component: AdminBatchUpload },
       { path: 'settings', name: 'AdminSettings', component: AdminSettings },
       { path: 'feedbacks', name: 'AdminFeedbacks', component: AdminFeedbacks },
     ],

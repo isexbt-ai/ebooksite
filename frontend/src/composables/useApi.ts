@@ -19,7 +19,7 @@ export const useApi = () => {
     const response = await fetch(`${API_BASE}${url}`, {
       ...options,
       headers,
-      credentials: 'include',
+      
     })
 
     // 获取响应文本

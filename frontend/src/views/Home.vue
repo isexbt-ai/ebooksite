@@ -18,6 +18,7 @@ const doSearch = () => {
 }
 
 const fetchBuyLink = async () => {
+const goToSettings = () => { if (authStore.isLoggedIn) { router.push('/settings') } else { router.push('/login') } }
   try {
     const api = useApi()
     const data = await api.get('/settings/buy_link')
@@ -101,7 +102,7 @@ onMounted(() => {
         <span class="nav-icon">🏠</span>
         <span class="nav-text active">首页</span>
       </div>
-      <div class="nav-item" @click="router.push('/settings')">
+      <div class="nav-item" @click="goToSettings">
         <span class="nav-icon">👤</span>
         <span class="nav-text">我的</span>
       </div>
