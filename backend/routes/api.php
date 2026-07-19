@@ -4,10 +4,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BookController;
+use App\Http\Controllers\BookUploadController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\UserController;
-use App\Http\Controllers\ScanController;
 
 /*
 |--------------------------------------------------------------------------
@@ -15,53 +15,53 @@ use App\Http\Controllers\ScanController;
 |--------------------------------------------------------------------------
 */
 
-// 公开路由
-Route::post('/auth/register', [AuthController::class, 'register']);
-Route::post('/auth/login', [AuthController::class, 'login']);
-Route::get('/settings/buy_link', [SettingsController::class, 'buyLink']);
+// 认证路由
+Route::post('/register', [AuthController::class, 'register']);
+Route::post('/login', [AuthController::class, 'login']);
+Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
+Route::get('/user', [AuthController::class, 'user'])->middleware('auth:sanctum');
 
-// 书籍搜索（公开）
-Route::get('/books/search', [BookController::class, 'search']);
+// 书籍路由（公开）
+Route::get('/books', [BookController::class, 'index']);
+Route::get('/books/{id}', [BookController::class, 'show']);
 
-// 需要登录的路由
+// 需要认证的路由
 Route::middleware('auth:sanctum')->group(function () {
-    Route::post('/auth/logout', [AuthController::class, 'logout']);
-    Route::get('/auth/me', [AuthController::class, 'me']);
-    Route::post('/auth/redeem', [AuthController::class, 'redeem']);
-
-    // 书籍
-    Route::get('/books', [BookController::class, 'index']);
-    Route::get('/books/{id}', [BookController::class, 'show']);
-    Route::get('/books/download/{id}', [BookController::class, 'download']);
-
-    // 用户设置
-    Route::post('/user/settings', [UserController::class, 'updateProfile']);
-    Route::post('/user/password', [UserController::class, 'changePassword']);
-
-    // 反馈
-    Route::post('/feedback', [SettingsController::class, 'feedback']);
+    // 普通上传
+    Route::post('/books/upload', [BookUploadController::class, 'upload']);
+    
+    // 分片上传
+    Route::post('/books/multipart/initiate', [BookUploadController::class, 'initiateMultipart']);
+    Route::post('/books/multipart/chunk', [BookUploadController::class, 'uploadChunk']);
+    Route::post('/books/multipart/complete', [BookUploadController::class, 'completeMultipart']);
+    Route::post('/books/multipart/abort', [BookUploadController::class, 'abortMultipart']);
+    
+    // 批量上传
+    Route::post('/books/batch-upload', [BookUploadController::class, 'batchUpload']);
+    
+    // 下载
+    Route::get('/books/{id}/download', [BookUploadController::class, 'download']);
+    
+    // 删除
+    Route::delete('/books/{id}', [BookUploadController::class, 'destroy']);
 });
 
-// 公开的文件下载接口（预签名 URL）
-Route::get('/books/file/{token}', [BookController::class, 'serveFile']);
-
-// 管理员路由
-Route::post('/admin/auth/login', [AdminController::class, 'login']);
-
-Route::middleware('auth:sanctum')->prefix('admin')->group(function () {
-    Route::get('/stats', [AdminController::class, 'stats']);
+// 管理后台路由
+Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function () {
+    Route::get('/dashboard', [AdminController::class, 'dashboard']);
     Route::get('/users', [AdminController::class, 'users']);
-    Route::post('/users/{id}/delete', [AdminController::class, 'deleteUser']);
-    Route::get('/cards', [AdminController::class, 'cards']);
-    Route::post('/cards/generate', [AuthController::class, 'generateCards']);
     Route::get('/books', [AdminController::class, 'books']);
-    Route::post('/books/{id}/delete', [AdminController::class, 'deleteBook']);
-    Route::get('/feedbacks', [AdminController::class, 'feedbacks']);
-    Route::post('/feedbacks/{id}/delete', [AdminController::class, 'deleteFeedback']);
     Route::get('/settings', [AdminController::class, 'settings']);
-    Route::post('/settings', [AdminController::class, 'saveSettings']);
+    Route::put('/settings', [AdminController::class, 'updateSettings']);
+});
 
-    // 书籍扫描（管理员）
-    Route::post('/scan', [ScanController::class, 'scan']);
-    Route::get('/scan/status', [ScanController::class, 'status']);
+// 系统设置
+Route::get('/settings', [SettingsController::class, 'index']);
+Route::put('/settings', [SettingsController::class, 'update'])->middleware('auth:sanctum');
+
+// 用户路由
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/profile', [UserController::class, 'profile']);
+    Route::put('/profile', [UserController::class, 'updateProfile']);
+    Route::get('/downloads', [UserController::class, 'downloads']);
 });

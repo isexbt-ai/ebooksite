@@ -31,4 +31,15 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    // Cloudflare R2 配置
+    'r2' => [
+        'key'                => env('R2_ACCESS_KEY_ID'),
+        'secret'             => env('R2_SECRET_ACCESS_KEY'),
+        'endpoint'           => env('R2_ENDPOINT'),
+        'bucket'             => env('R2_BUCKET'),
+        'region'             => env('R2_REGION', 'auto'),
+        'public_url'         => env('R2_PUBLIC_URL'),
+        'presigned_expires'  => (int) env('R2_PRESIGNED_URL_EXPIRES', 3600),
+    ],
+
 ];
