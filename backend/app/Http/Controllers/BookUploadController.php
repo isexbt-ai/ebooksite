@@ -22,7 +22,187 @@ class BookUploadController extends Controller
     }
 
     /**
-     * 单文件上传
+     * 生成预签名 PUT URL（小文件前端直传 R2）
+     */
+    public function presign(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'file_name' => 'required|string',
+            'file_size' => 'required|integer|max:52428800',
+            'mime_type' => 'nullable|string',
+            'title'     => 'nullable|string|max:255',
+            'author'    => 'nullable|string|max:255',
+            'category'  => 'nullable|string|max:50',
+        ]);
+
+        $extension = pathinfo($validated['file_name'], PATHINFO_EXTENSION);
+        $title = $validated['title'] ?? pathinfo($validated['file_name'], PATHINFO_FILENAME);
+        $key = sprintf(
+            'novels/%s/%s_%s.%s',
+            date('Y/m'),
+            Str::slug($title),
+            uniqid(),
+            $extension
+        );
+
+        $presignedUrl = $this->r2->generatePresignedPutUrl($key, 3600, $validated['mime_type'] ?? null);
+
+        if (!$presignedUrl) {
+            return $this->api->error('生成预签名URL失败', 3008, 500);
+        }
+
+        $book = Book::create([
+            'title'         => $title,
+            'author'        => $validated['author'] ?? '未知',
+            'category'      => $validated['category'] ?? null,
+            'r2_key'        => $key,
+            'file_size'     => $validated['file_size'],
+            'file_format'   => $extension,
+            'mime_type'     => $validated['mime_type'] ?? 'application/octet-stream',
+            'upload_status' => 'uploading',
+            'uploader_id'   => auth()->id(),
+        ]);
+
+        return $this->api->success([
+            'book_id'       => $book->id,
+            'presigned_url' => $presignedUrl,
+            'object_key'    => $key,
+        ]);
+    }
+
+    /**
+     * 初始化分片直传（大文件前端直传 R2）
+     */
+    public function presignMultipart(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'file_name' => 'required|string',
+            'file_size' => 'required|integer|min:1',
+            'mime_type' => 'nullable|string',
+            'title'     => 'required|string|max:255',
+            'author'    => 'required|string|max:255',
+            'category'  => 'nullable|string|max:50',
+        ]);
+
+        $extension = pathinfo($validated['file_name'], PATHINFO_EXTENSION);
+        $key = sprintf(
+            'novels/%s/%s_%s.%s',
+            date('Y/m'),
+            Str::slug($validated['title']),
+            uniqid(),
+            $extension
+        );
+
+        $uploadId = $this->r2->initiateMultipartUpload($key, $validated['mime_type'] ?? null);
+
+        if (!$uploadId) {
+            return $this->api->error('初始化分片上传失败', 3002, 500);
+        }
+
+        $totalChunks = (int) ceil($validated['file_size'] / $this->chunkSize);
+
+        // 批量生成分片预签名 URL
+        $presignedUrls = $this->r2->generatePresignedPartUrls($key, $uploadId, $totalChunks, 3600);
+
+        if (empty($presignedUrls)) {
+            $this->r2->abortMultipartUpload($key, $uploadId);
+            return $this->api->error('生成分片预签名URL失败', 3009, 500);
+        }
+
+        $book = Book::create([
+            'title'         => $validated['title'],
+            'author'        => $validated['author'],
+            'category'      => $validated['category'] ?? null,
+            'r2_key'        => $key,
+            'file_size'     => $validated['file_size'],
+            'file_format'   => $extension,
+            'mime_type'     => $validated['mime_type'] ?? 'application/octet-stream',
+            'upload_status' => 'uploading',
+            'upload_id'     => $uploadId,
+            'uploader_id'   => auth()->id(),
+        ]);
+
+        // 将 presignedUrls 从 1-indexed 转为 0-indexed 数组
+        $urlList = [];
+        for ($i = 1; $i <= $totalChunks; $i++) {
+            $urlList[] = $presignedUrls[$i];
+        }
+
+        return $this->api->success([
+            'book_id'        => $book->id,
+            'upload_id'      => $uploadId,
+            'key'            => $key,
+            'chunk_size'     => $this->chunkSize,
+            'total_chunks'   => $totalChunks,
+            'presigned_urls' => $urlList,
+        ], '初始化成功');
+    }
+
+    /**
+     * 确认直传上传完成
+     */
+    public function confirmUpload(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'book_id' => 'required|integer',
+        ]);
+
+        $book = Book::findOrFail($validated['book_id']);
+
+        if ($book->upload_status === 'completed') {
+            return $this->api->success($book, '已上传完成');
+        }
+
+        // 验证 R2 对象存在
+        if (!$this->r2->exists($book->r2_key)) {
+            return $this->api->error('文件未上传到存储，请重试', 3007);
+        }
+
+        // 计算文件哈希（从 R2 获取不可行，留空或标记待处理）
+        $book->update([
+            'r2_url'        => $this->r2->getPublicUrl($book->r2_key),
+            'upload_status' => 'completed',
+        ]);
+
+        AuditLog::log('upload_direct', 'book', $book->id);
+
+        return $this->api->success($book, '上传成功');
+    }
+
+    /**
+     * 确认分片直传 ETag（前端直传 R2 后调用）
+     */
+    public function confirmChunk(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'book_id'     => 'required|integer',
+            'upload_id'   => 'required|string',
+            'part_number' => 'required|integer|min:1',
+            'etag'        => 'required|string',
+        ]);
+
+        $book = Book::findOrFail($validated['book_id']);
+
+        if ($book->upload_id !== $validated['upload_id']) {
+            return $this->api->error('上传ID不匹配', 3003);
+        }
+
+        $parts = $book->upload_parts ?? [];
+        $parts[] = [
+            'ETag'       => $validated['etag'],
+            'PartNumber' => $validated['part_number'],
+        ];
+        $book->upload_parts = $parts;
+        $book->save();
+
+        return $this->api->success([
+            'part_number' => $validated['part_number'],
+            'etag'        => $validated['etag'],
+        ], '分片确认成功');
+    }
+
+    /**
+     * 单文件上传（传统方式，作为降级方案）
      */
     public function upload(Request $request): JsonResponse
     {

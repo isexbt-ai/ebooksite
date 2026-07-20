@@ -8,6 +8,8 @@ import {
 } from 'naive-ui'
 import type { UploadFileInfo } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
+import { api } from '@/api/client'
+import type { PresignData } from '@/api/types'
 
 const message = useMessage()
 const isMobile = ref(false)
@@ -26,23 +28,159 @@ const categoryOptions = [
   { label: '其他', value: '其他' },
 ]
 
-// ===== 单文件上传 =====
+const ALLOWED_EXTENSIONS = ['txt', 'epub', 'pdf', 'mobi', 'azw3']
+const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50MB
+const CHUNK_SIZE = 5 * 1024 * 1024 // 5MB
+const MAX_RETRIES = 3
+
+// 校验文件
+const validateFile = (file: File): string | null => {
+  const ext = file.name.split('.').pop()?.toLowerCase()
+  if (!ext || !ALLOWED_EXTENSIONS.includes(ext)) {
+    return `不支持的文件格式 (.${ext})，仅支持 ${ALLOWED_EXTENSIONS.join(', ')}`
+  }
+  if (file.size > MAX_FILE_SIZE) {
+    return `文件过大 (${formatSize(file.size)})，最大支持 ${formatSize(MAX_FILE_SIZE)}`
+  }
+  if (file.size === 0) {
+    return '文件为空'
+  }
+  return null
+}
+
+// 带重试的 XHR 请求
+const xhrRequest = (opts: {
+  method: string
+  url: string
+  headers?: Record<string, string>
+  body?: XMLHttpRequestBodyInit
+  onProgress?: (loaded: number, total: number) => void
+  timeout?: number
+  retries?: number
+}): Promise<XMLHttpRequest> => {
+  const { method, url, headers, body, onProgress, timeout = 0, retries = MAX_RETRIES } = opts
+  return new Promise((resolve, reject) => {
+    const attempt = (remaining: number) => {
+      const xhr = new XMLHttpRequest()
+      xhr.open(method, url)
+      if (timeout > 0) xhr.timeout = timeout
+      if (headers) {
+        Object.entries(headers).forEach(([k, v]) => xhr.setRequestHeader(k, v))
+      }
+      if (onProgress) {
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) onProgress(e.loaded, e.total)
+        }
+      }
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve(xhr)
+        } else if (remaining > 0 && xhr.status >= 500) {
+          // 服务端 5xx 错误重试
+          const delay = Math.pow(2, MAX_RETRIES - remaining) * 1000
+          setTimeout(() => attempt(remaining - 1), delay)
+        } else {
+          reject(new Error(`HTTP ${xhr.status}`))
+        }
+      }
+      xhr.onerror = () => {
+        if (remaining > 0) {
+          const delay = Math.pow(2, MAX_RETRIES - remaining) * 1000
+          setTimeout(() => attempt(remaining - 1), delay)
+        } else {
+          reject(new Error('网络错误'))
+        }
+      }
+      xhr.ontimeout = () => {
+        if (remaining > 0) {
+          attempt(remaining - 1)
+        } else {
+          reject(new Error('请求超时'))
+        }
+      }
+      xhr.send(body || null)
+    }
+    attempt(retries)
+  })
+}
+
+// ===== 单文件上传（直传 R2） =====
 const singleFileList = ref<UploadFileInfo[]>([])
 const singleUploading = ref(false)
 const singleProgress = ref(0)
+const singleStage = ref('') // presign / uploading / confirming
 
 const handleSingleUpload = async () => {
   if (!singleFileList.value.length) {
     message.warning('请选择文件')
     return
   }
+
+  const file = singleFileList.value[0].file!
+  const err = validateFile(file)
+  if (err) {
+    message.error(err)
+    return
+  }
+
   singleUploading.value = true
   singleProgress.value = 0
-  try {
-    const file = singleFileList.value[0].file!
-    const fd = new FormData()
-    fd.append('file', file)
+  singleStage.value = 'presign'
 
+  try {
+    // 1. 获取预签名 URL
+    const presignRes = await api.post<PresignData>('/admin/upload/presign', {
+      file_name: file.name,
+      file_size: file.size,
+      mime_type: file.type || 'application/octet-stream',
+    })
+    const { presigned_url, book_id } = presignRes.data
+
+    singleStage.value = 'uploading'
+
+    // 2. 直传 R2
+    await xhrRequest({
+      method: 'PUT',
+      url: presigned_url,
+      headers: { 'Content-Type': file.type || 'application/octet-stream' },
+      body: file,
+      onProgress: (loaded, total) => {
+        singleProgress.value = Math.round((loaded / total) * 90) // 留 10% 给确认
+      },
+      timeout: 300000, // 5 分钟
+    })
+
+    singleStage.value = 'confirming'
+    singleProgress.value = 90
+
+    // 3. 确认上传
+    await api.post('/admin/upload/confirm', { book_id })
+
+    singleProgress.value = 100
+    message.success('上传成功')
+    singleFileList.value = []
+    singleProgress.value = 0
+    singleStage.value = ''
+  } catch (e: any) {
+    // 降级到传统上传
+    if (singleStage.value === 'presign') {
+      message.warning('直传模式不可用，尝试传统上传...')
+      await fallbackSingleUpload(file)
+    } else {
+      message.error(e.message || '上传失败')
+    }
+  } finally {
+    singleUploading.value = false
+  }
+}
+
+// 传统上传降级
+const fallbackSingleUpload = async (file: File) => {
+  singleStage.value = 'uploading'
+  const fd = new FormData()
+  fd.append('file', file)
+
+  try {
     await new Promise<void>((resolve, reject) => {
       const xhr = new XMLHttpRequest()
       xhr.open('POST', '/api/admin/upload/single')
@@ -54,7 +192,8 @@ const handleSingleUpload = async () => {
         if (xhr.status === 200 || xhr.status === 201) {
           try {
             const res = JSON.parse(xhr.responseText)
-            if (res.code === 0) { resolve() } else { reject(new Error(res.message || '上传失败')) }
+            if (res.code === 0) resolve()
+            else reject(new Error(res.message || '上传失败'))
           } catch { reject(new Error('响应解析失败')) }
         } else if (xhr.status === 403) {
           reject(new Error('无权限，仅管理员可上传'))
@@ -71,18 +210,15 @@ const handleSingleUpload = async () => {
       xhr.onerror = () => reject(new Error('网络错误'))
       xhr.send(fd)
     })
-
-    message.success('上传成功')
+    message.success('上传成功（传统模式）')
     singleFileList.value = []
     singleProgress.value = 0
   } catch (e: any) {
     message.error(e.message || '上传失败')
-  } finally {
-    singleUploading.value = false
   }
 }
 
-// ===== 批量上传 =====
+// ===== 批量上传（直传 R2） =====
 interface BatchItem {
   id: number
   file: File
@@ -91,7 +227,7 @@ interface BatchItem {
   category: string
   size: number
   format: string
-  status: 'pending' | 'uploading' | 'success' | 'skip' | 'error'
+  status: 'pending' | 'presigning' | 'uploading' | 'confirming' | 'success' | 'skip' | 'error'
   message: string
   progress: number
 }
@@ -113,22 +249,78 @@ const extractFormat = (filename: string): string => {
 const handleBatchFileChange = (data: { fileList: UploadFileInfo[] }) => {
   batchItems.value = data.fileList
     .filter(f => f.file)
-    .map((f, i) => ({
-      id: i,
-      file: f.file!,
-      title: extractTitle(f.file!.name),
-      author: '',
-      category: batchCategory.value,
-      size: f.file!.size,
-      format: extractFormat(f.file!.name),
-      status: 'pending' as const,
-      message: '',
-      progress: 0,
-    }))
+    .map((f, i) => {
+      const file = f.file!
+      const validationError = validateFile(file)
+      return {
+        id: i,
+        file,
+        title: extractTitle(file.name),
+        author: '',
+        category: batchCategory.value,
+        size: file.size,
+        format: extractFormat(file.name),
+        status: validationError ? ('error' as const) : ('pending' as const),
+        message: validationError || '',
+        progress: 0,
+      }
+    })
 }
 
-const uploadOneFile = (item: BatchItem): Promise<void> => {
-  return new Promise((resolve) => {
+// 单个文件直传 R2
+const uploadOneFileDirect = async (item: BatchItem): Promise<void> => {
+  try {
+    // 1. 预签名
+    item.status = 'presigning'
+    item.message = '获取上传地址...'
+    const presignRes = await api.post<PresignData>('/admin/upload/presign', {
+      file_name: item.file.name,
+      file_size: item.file.size,
+      mime_type: item.file.type || 'application/octet-stream',
+      title: item.title || undefined,
+      author: item.author || undefined,
+      category: item.category || undefined,
+    })
+    const { presigned_url, book_id } = presignRes.data
+
+    // 2. 直传 R2
+    item.status = 'uploading'
+    item.message = '上传中...'
+    await xhrRequest({
+      method: 'PUT',
+      url: presigned_url,
+      headers: { 'Content-Type': item.file.type || 'application/octet-stream' },
+      body: item.file,
+      onProgress: (loaded, total) => {
+        item.progress = Math.round((loaded / total) * 90)
+      },
+      timeout: 300000,
+    })
+
+    // 3. 确认
+    item.status = 'confirming'
+    item.message = '确认中...'
+    item.progress = 90
+    await api.post('/admin/upload/confirm', { book_id })
+
+    item.status = 'success'
+    item.message = '上传成功'
+    item.progress = 100
+  } catch {
+    // 降级到传统上传
+    try {
+      item.message = '直传失败，尝试传统上传...'
+      await uploadOneFileFallback(item)
+    } catch (fallbackErr: any) {
+      item.status = 'error'
+      item.message = fallbackErr.message || '上传失败'
+    }
+  }
+}
+
+// 单个文件传统上传降级
+const uploadOneFileFallback = (item: BatchItem): Promise<void> => {
+  return new Promise((resolve, reject) => {
     item.status = 'uploading'
     item.progress = 0
 
@@ -150,14 +342,17 @@ const uploadOneFile = (item: BatchItem): Promise<void> => {
           const res = JSON.parse(xhr.responseText)
           if (res.code === 0) {
             item.status = 'success'
-            item.message = '上传成功'
+            item.message = '上传成功（传统模式）'
+            resolve()
           } else {
             item.status = 'error'
             item.message = res.message || '上传失败'
+            reject(new Error(item.message))
           }
         } catch {
           item.status = 'error'
           item.message = '响应解析失败'
+          reject(new Error(item.message))
         }
       } else if (xhr.status === 422) {
         item.status = 'error'
@@ -166,13 +361,18 @@ const uploadOneFile = (item: BatchItem): Promise<void> => {
           const errors = res.errors ? Object.values(res.errors).flat().join('; ') : res.message || '验证失败'
           item.message = errors
         } catch { item.message = '验证失败 (422)' }
+        reject(new Error(item.message))
       } else {
         item.status = 'error'
         item.message = `上传失败 (${xhr.status})`
+        reject(new Error(item.message))
       }
-      resolve()
     }
-    xhr.onerror = () => { item.status = 'error'; item.message = '网络错误'; resolve() }
+    xhr.onerror = () => {
+      item.status = 'error'
+      item.message = '网络错误'
+      reject(new Error('网络错误'))
+    }
     xhr.send(fd)
   })
 }
@@ -191,7 +391,7 @@ const handleBatchUpload = async () => {
   const runNext = async (): Promise<void> => {
     if (queue.length === 0) return
     const item = queue.shift()!
-    await uploadOneFile(item)
+    await uploadOneFileDirect(item)
     await runNext()
   }
 
@@ -217,6 +417,19 @@ const totalProgress = computed(() => {
   return Math.round((done / items.length) * 100)
 })
 
+const statusLabel = (status: BatchItem['status']): string => {
+  const map: Record<BatchItem['status'], string> = {
+    pending: '⏳ 待上传',
+    presigning: '🔗 获取地址',
+    uploading: '📤 上传中',
+    confirming: '✅ 确认中',
+    success: '✅ 成功',
+    skip: '⏭️ 跳过',
+    error: '❌ 失败',
+  }
+  return map[status]
+}
+
 const batchColumns: DataTableColumns<BatchItem> = [
   { title: '书名', key: 'title', width: 200, render: (row) => h(NInput, { value: row.title, size: 'small', onUpdateValue: (v: string) => { row.title = v } }) },
   { title: '作者', key: 'author', width: 120, render: (row) => h(NInput, { value: row.author, size: 'small', placeholder: '未知', onUpdateValue: (v: string) => { row.author = v } }) },
@@ -224,12 +437,9 @@ const batchColumns: DataTableColumns<BatchItem> = [
   { title: '大小', key: 'size', width: 80, render: (row) => formatSize(row.size) },
   {
     title: '进度', key: 'progress', width: 120,
-    render: (row) => row.status === 'uploading'
+    render: (row) => row.status === 'uploading' || row.status === 'presigning' || row.status === 'confirming'
       ? h(NProgress, { type: 'line', percentage: row.progress, indicatorPlacement: 'inside' })
-      : row.status === 'success' ? '✅ 成功'
-      : row.status === 'skip' ? '⏭️ 跳过'
-      : row.status === 'error' ? '❌ 失败'
-      : '⏳ 待上传'
+      : statusLabel(row.status)
   },
   { title: '说明', key: 'message', ellipsis: { tooltip: true } },
 ]
@@ -252,7 +462,7 @@ const applyCategoryToAll = () => {
         <n-card class="glass-card" :style="{ maxWidth: isMobile ? '100%' : '600px' }">
           <n-space vertical :size="16">
             <n-alert type="info" :bordered="false">
-              选择文件即可上传，书名和作者将自动从文件名提取
+              选择文件即可上传，书名和作者将自动从文件名提取。文件将直传云存储，速度更快。
             </n-alert>
             <n-upload
               v-model:file-list="singleFileList"
@@ -270,6 +480,9 @@ const applyCategoryToAll = () => {
               :percentage="singleProgress"
               indicator-placement="inside"
             />
+            <div v-if="singleUploading && singleStage" style="color: var(--text-secondary); font-size: 13px; text-align: center;">
+              {{ singleStage === 'presign' ? '获取上传地址...' : singleStage === 'uploading' ? '直传云存储中...' : '确认上传...' }}
+            </div>
             <n-button type="primary" block :loading="singleUploading" :disabled="singleUploading || !singleFileList.length" @click="handleSingleUpload">
               上传
             </n-button>
@@ -282,7 +495,7 @@ const applyCategoryToAll = () => {
         <n-card class="glass-card">
           <n-space vertical :size="16">
             <n-alert type="info" :bordered="false">
-              选择多个文件后，可编辑书名和作者。系统会自动通过文件MD5去重。支持并发上传，速度更快。
+              选择多个文件后，可编辑书名和作者。文件将直传云存储，支持并发上传，速度更快。
             </n-alert>
 
             <n-space align="center" :size="12" :vertical="isMobile" :wrap="true">
@@ -344,7 +557,7 @@ const applyCategoryToAll = () => {
                     <span style="color: var(--text-secondary); font-size: 13px;">{{ formatSize(item.size) }}</span>
                   </div>
                   <div class="mobile-batch-status">
-                    <n-progress v-if="item.status === 'uploading'" type="line" :percentage="item.progress" indicator-placement="inside" style="flex: 1;" />
+                    <n-progress v-if="item.status === 'uploading' || item.status === 'presigning' || item.status === 'confirming'" type="line" :percentage="item.progress" indicator-placement="inside" style="flex: 1;" />
                     <span v-else-if="item.status === 'success'" style="color: #22c55e; font-size: 13px;">✅ 成功</span>
                     <span v-else-if="item.status === 'error'" style="color: #ef4444; font-size: 13px;">❌ {{ item.message }}</span>
                     <span v-else style="color: var(--text-secondary); font-size: 13px;">⏳ 待上传</span>

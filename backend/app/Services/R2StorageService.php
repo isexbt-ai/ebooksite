@@ -120,6 +120,58 @@ class R2StorageService
         }
     }
 
+    /**
+     * 生成预签名 PUT URL（用于前端直传）
+     */
+    public function generatePresignedPutUrl(string $key, ?int $expires = null, ?string $contentType = null): ?string
+    {
+        $expires = $expires ?? $this->presignedExpires;
+        try {
+            $params = [
+                'Bucket' => $this->bucket,
+                'Key'    => $key,
+            ];
+            if ($contentType) {
+                $params['ContentType'] = $contentType;
+            }
+            $cmd = $this->client->createPresignedRequest(
+                $this->client->getCommand('PutObject', $params),
+                "+{$expires} seconds"
+            );
+            return (string) $cmd->getUri();
+        } catch (AwsException $e) {
+            Log::error('R2 presigned PUT URL failed: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * 批量生成分片上传的预签名 URL（用于前端分片直传）
+     */
+    public function generatePresignedPartUrls(string $key, string $uploadId, int $totalParts, ?int $expires = null): array
+    {
+        $expires = $expires ?? $this->presignedExpires;
+        $urls = [];
+        for ($i = 1; $i <= $totalParts; $i++) {
+            try {
+                $cmd = $this->client->createPresignedRequest(
+                    $this->client->getCommand('UploadPart', [
+                        'Bucket'     => $this->bucket,
+                        'Key'        => $key,
+                        'UploadId'   => $uploadId,
+                        'PartNumber' => $i,
+                    ]),
+                    "+{$expires} seconds"
+                );
+                $urls[$i] = (string) $cmd->getUri();
+            } catch (AwsException $e) {
+                Log::error("R2 presigned part URL failed for part {$i}: " . $e->getMessage());
+                return [];
+            }
+        }
+        return $urls;
+    }
+
     public function initiateMultipartUpload(string $key, ?string $contentType = null): ?string
     {
         try {

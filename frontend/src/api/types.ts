@@ -111,3 +111,20 @@ export interface RegisterData {
   username: string
   expiry_date: string
 }
+
+// 预签名上传响应
+export interface PresignData {
+  book_id: number
+  presigned_url: string
+  object_key: string
+}
+
+// 分片预签名上传响应
+export interface PresignMultipartData {
+  book_id: number
+  upload_id: string
+  key: string
+  chunk_size: number
+  total_chunks: number
+  presigned_urls: string[]
+}

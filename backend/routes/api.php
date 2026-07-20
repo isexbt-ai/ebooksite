@@ -68,8 +68,11 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
 
     // 上传路由（仅管理员）
     Route::post('/upload/single', [BookUploadController::class, 'upload']);
+    Route::post('/upload/presign', [BookUploadController::class, 'presign']);
+    Route::post('/upload/presign-multipart', [BookUploadController::class, 'presignMultipart']);
+    Route::post('/upload/confirm', [BookUploadController::class, 'confirmUpload']);
     Route::post('/upload/multipart/initiate', [BookUploadController::class, 'initiateMultipart']);
-    Route::post('/upload/multipart/chunk', [BookUploadController::class, 'uploadChunk']);
+    Route::post('/upload/multipart/chunk', [BookUploadController::class, 'confirmChunk']);
     Route::post('/upload/multipart/complete', [BookUploadController::class, 'completeMultipart']);
     Route::post('/upload/multipart/abort', [BookUploadController::class, 'abortMultipart']);
     Route::post('/upload/batch-dedup', [BookUploadController::class, 'batchUploadDedup']);
