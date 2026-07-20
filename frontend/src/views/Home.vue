@@ -338,38 +338,52 @@ const handleGameLink = () => {
 .quick-links {
   display: flex;
   justify-content: center;
-  gap: 16px;
+  gap: 12px;
   margin-top: 20px;
+  max-width: 560px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .quick-link-item {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  padding: 8px 20px;
-  background: rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border-radius: 24px;
+  padding: 10px 0;
+  min-width: 0;
+  flex: 1;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  border-radius: 12px;
   color: #fff;
   cursor: pointer;
   transition: all 0.2s;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   user-select: none;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
+  white-space: nowrap;
 }
 
 .quick-link-item:hover {
-  background: rgba(255, 255, 255, 0.35);
-  transform: translateY(-1px);
+  background: linear-gradient(135deg, #f87171, #ef4444);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4);
 }
 
 .quick-link-item:active {
   transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(220, 38, 38, 0.3);
 }
 
 .quick-link-icon {
   font-size: 18px;
+  flex-shrink: 0;
+}
+
+.quick-link-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* 热门书籍 */
@@ -473,13 +487,14 @@ const handleGameLink = () => {
   }
 
   .quick-links {
-    gap: 10px;
+    gap: 8px;
     margin-top: 16px;
   }
 
   .quick-link-item {
-    padding: 6px 14px;
+    padding: 8px 0;
     font-size: 13px;
+    border-radius: 10px;
   }
 
   .quick-link-icon {
@@ -512,12 +527,13 @@ const handleGameLink = () => {
   }
 
   .quick-links {
-    gap: 8px;
+    gap: 6px;
   }
 
   .quick-link-item {
-    padding: 6px 12px;
+    padding: 7px 0;
     font-size: 12px;
+    border-radius: 8px;
   }
 
   .quick-link-icon {
