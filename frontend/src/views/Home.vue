@@ -3,9 +3,9 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { api } from '@/api/client'
-import type { Book, Settings } from '@/api/types'
+import type { Book, Settings, PaginatedData } from '@/api/types'
 import { formatSize } from '@/utils/format'
-import { NButton, NInput, NCard, NSpace, NTag, NSkeleton, NDrawer, NDrawerContent } from 'naive-ui'
+import { NButton, NInput, NCard, NSpace, NTag, NSkeleton, NDrawer, NDrawerContent, NDivider } from 'naive-ui'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -14,15 +14,18 @@ const hotBooks = ref<Book[]>([])
 const settings = ref<Settings>({})
 const loading = ref(true)
 const showMobileMenu = ref(false)
+const totalBooks = ref(0)
 
 onMounted(async () => {
   try {
-    const [hotRes, settingsRes] = await Promise.all([
+    const [hotRes, settingsRes, booksRes] = await Promise.all([
       api.get<{items: Book[]}>('/books/hot?limit=8'),
       api.get<Settings>('/settings'),
+      api.get<PaginatedData<Book>>('/books?page=1&size=1'),
     ])
     hotBooks.value = hotRes.data?.items || []
     settings.value = settingsRes.data || {}
+    totalBooks.value = booksRes.data?.total || 0
   } catch { /* ignore */ }
   loading.value = false
 })
@@ -50,19 +53,8 @@ const handleBuyCard = () => {
           <span class="nav-title">{{ settings.site_name || '搜书机器人' }}</span>
         </div>
 
-        <!-- 桌面端搜索+按钮 -->
+        <!-- 桌面端按钮 -->
         <div class="nav-desktop">
-          <n-input
-            v-model:value="searchQuery"
-            placeholder="搜索书名或作者..."
-            size="small"
-            class="nav-search"
-            @keyup.enter="handleSearch"
-          >
-            <template #suffix>
-              <n-button size="small" type="primary" @click="handleSearch">搜索</n-button>
-            </template>
-          </n-input>
           <template v-if="!authStore.isLoggedIn">
             <n-button size="small" type="primary" @click="router.push('/login')">登录</n-button>
             <n-button size="small" @click="router.push('/register')">注册</n-button>
@@ -88,18 +80,6 @@ const handleBuyCard = () => {
     <!-- 移动端抽屉菜单 -->
     <n-drawer v-model:show="showMobileMenu" placement="right" :width="280">
       <n-drawer-content title="菜单" :closable="true">
-        <div class="mobile-menu-search">
-          <n-input
-            v-model:value="searchQuery"
-            placeholder="搜索书名或作者..."
-            @keyup.enter="handleSearch(); showMobileMenu = false"
-          >
-            <template #suffix>
-              <n-button type="primary" size="small" @click="handleSearch(); showMobileMenu = false">搜索</n-button>
-            </template>
-          </n-input>
-        </div>
-
         <div class="mobile-menu-items">
           <template v-if="!authStore.isLoggedIn">
             <n-button block type="primary" @click="router.push('/login'); showMobileMenu = false">登录</n-button>
@@ -117,7 +97,6 @@ const handleBuyCard = () => {
             <n-button block @click="authStore.logout().then(() => { router.push('/'); showMobileMenu = false })">退出登录</n-button>
           </template>
           <n-divider style="margin: 8px 0;" />
-          <n-button block @click="router.push('/feedback'); showMobileMenu = false">💬 意见反馈</n-button>
           <n-button v-if="settings.buy_link" block type="primary" @click="handleBuyCard(); showMobileMenu = false">🛒 购买卡密</n-button>
         </div>
       </n-drawer-content>
@@ -127,7 +106,10 @@ const handleBuyCard = () => {
     <div class="hero-section">
       <div class="hero-inner">
         <h1 class="hero-title">📚 {{ settings.site_name || '搜书机器人' }}</h1>
-        <p class="hero-desc">{{ settings.site_description || '电子书搜索与下载平台' }}</p>
+        <p class="hero-desc">
+          {{ settings.site_description || '电子书搜索与下载平台' }}
+          <span v-if="totalBooks > 0" class="hero-stat"> · 共 {{ totalBooks }} 本书籍</span>
+        </p>
         <n-input
           v-model:value="searchQuery"
           placeholder="搜索书名或作者..."
@@ -147,10 +129,9 @@ const handleBuyCard = () => {
       <div v-if="!loading && hotBooks.length > 0">
         <h2 class="section-title">🔥 热门书籍</h2>
         <div class="book-grid">
-          <n-card
+          <div
             v-for="book in hotBooks"
             :key="book.id"
-            hoverable
             class="glass-card book-card"
             @click="router.push(`/books/${book.id}`)"
           >
@@ -161,7 +142,7 @@ const handleBuyCard = () => {
               <n-tag size="small">{{ book.file_format?.toUpperCase() || '未知' }}</n-tag>
               <n-tag size="small" type="success">{{ formatSize(book.file_size) }}</n-tag>
             </n-space>
-          </n-card>
+          </div>
         </div>
       </div>
 
@@ -171,16 +152,11 @@ const handleBuyCard = () => {
 
       <!-- 快捷操作区 -->
       <div class="quick-actions">
-        <n-button size="large" @click="router.push('/feedback')">💬 意见反馈</n-button>
-        <n-button size="large" type="primary" @click="handleBuyCard">🛒 购买卡密</n-button>
+        <n-button size="large" type="primary" @click="handleBuyCard" v-if="settings.buy_link">🛒 购买卡密</n-button>
       </div>
     </div>
   </div>
 </template>
-
-<script lang="ts">
-import { NDivider } from 'naive-ui'
-</script>
 
 <style scoped>
 .home-page {
@@ -231,10 +207,6 @@ import { NDivider } from 'naive-ui'
   gap: 8px;
 }
 
-.nav-search {
-  width: 240px;
-}
-
 .nav-user-info {
   font-size: 13px;
   color: var(--text-secondary);
@@ -247,10 +219,6 @@ import { NDivider } from 'naive-ui'
 }
 
 /* 移动端菜单 */
-.mobile-menu-search {
-  margin-bottom: 16px;
-}
-
 .mobile-menu-items {
   display: flex;
   flex-direction: column;
@@ -312,6 +280,11 @@ import { NDivider } from 'naive-ui'
   text-shadow: 0 1px 4px rgba(0,0,0,0.1);
 }
 
+.hero-stat {
+  font-weight: 600;
+  color: rgba(255,255,255,0.95);
+}
+
 .hero-search {
   max-width: 560px;
   margin: 0 auto;
@@ -331,10 +304,19 @@ import { NDivider } from 'naive-ui'
   font-weight: 700;
 }
 
+/* 书籍卡片网格 - 使用 auto-fill 自适应 */
 .book-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 16px;
+}
+
+.book-card {
+  padding: 16px;
+  cursor: pointer;
+  border-radius: 16px;
+  overflow: hidden;
+  min-width: 0;
 }
 
 .book-card-title {
@@ -394,8 +376,12 @@ import { NDivider } from 'naive-ui'
   }
 
   .book-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 10px;
+  }
+
+  .book-card {
+    padding: 12px;
   }
 
   .book-card-title {
@@ -427,8 +413,22 @@ import { NDivider } from 'naive-ui'
   }
 
   .book-grid {
-    grid-template-columns: 1fr;
-    gap: 10px;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .book-card {
+    padding: 10px;
+  }
+
+  .book-card-title {
+    font-size: 13px;
+    margin-bottom: 4px;
+  }
+
+  .book-card-author {
+    font-size: 12px;
+    margin-bottom: 6px;
   }
 }
 </style>
