@@ -43,19 +43,18 @@ const handleDownload = async () => {
 
   downloading.value = true
   try {
-    const res = await api.get<{ download_url: string; file_name: string; file_size?: number; expires_in?: number }>(`/books/${route.params.id}/download`)
+    const res = await api.get<{ download_url: string; file_name: string; file_size?: number }>(`/books/${route.params.id}/download`)
     const url = res.data.download_url
     if (!url) {
       message.error('获取下载链接失败')
       return
     }
 
-    // 使用隐藏 <a> 标签触发下载，兼容移动端
+    // 后端代理下载 URL 带有 Content-Disposition: attachment
+    // 浏览器会直接触发下载，不会离开当前页面
     const link = document.createElement('a')
     link.href = url
-    link.download = res.data.file_name || ''
-    link.target = '_blank'
-    link.rel = 'noopener noreferrer'
+    link.style.display = 'none'
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)

@@ -73,6 +73,7 @@ class BookController extends Controller
 
     /**
      * 下载书籍（需要认证）
+     * 返回一次性下载 token，前端通过代理路由下载
      */
     public function download(Request $request, int $id): JsonResponse
     {
@@ -102,28 +103,77 @@ class BookController extends Controller
             'book_id' => $book->id,
         ]);
 
-        // 返回R2公开URL（如果配置了公开访问）
-        if ($book->r2_url) {
-            return $this->api->success([
-                'download_url' => $book->r2_url,
-                'file_name'    => $this->sanitizeFilename($book->title) . '.' . $book->file_format,
-                'file_size'    => $book->file_size,
-            ]);
-        }
-
-        // 否则返回预签名URL
-        $r2 = app(\App\Services\R2StorageService::class);
-        $url = $r2->getPresignedUrl($book->r2_key);
-
-        if (!$url) {
-            return $this->api->error('生成下载链接失败', 2002, 500);
-        }
+        // 生成一次性下载 token（5分钟有效）
+        $token = md5($user->id . $book->id . time() . uniqid());
+        cache()->put("download_token:{$token}", [
+            'book_id'  => $book->id,
+            'user_id'  => $user->id,
+        ], now()->addMinutes(5));
 
         return $this->api->success([
-            'download_url' => $url,
+            'download_url' => url("/api/books/file/{$token}"),
             'file_name'    => $this->sanitizeFilename($book->title) . '.' . $book->file_format,
             'file_size'    => $book->file_size,
-            'expires_in'   => 3600,
+        ]);
+    }
+
+    /**
+     * 代理下载文件（通过一次性 token）
+     * 浏览器直接访问此 URL 触发下载
+     */
+    public function downloadFile(Request $request, string $token)
+    {
+        $cached = cache()->pull("download_token:{$token}");
+
+        if (!$cached) {
+            abort(404, '下载链接已过期或无效');
+        }
+
+        $book = Book::find($cached['book_id']);
+        if (!$book || !$book->r2_key) {
+            abort(404, '文件不存在');
+        }
+
+        $fileName = $this->sanitizeFilename($book->title) . '.' . $book->file_format;
+        $downloadUrl = $book->r2_url;
+
+        // 如果没有公开 URL，生成预签名 URL
+        if (!$downloadUrl) {
+            $r2 = app(\App\Services\R2StorageService::class);
+            $downloadUrl = $r2->getPresignedUrl($book->r2_key);
+            if (!$downloadUrl) {
+                abort(500, '生成下载链接失败');
+            }
+        }
+
+        // 使用 PHP stream 代理下载，设置 Content-Disposition 强制浏览器下载
+        return response()->stream(function () use ($downloadUrl) {
+            $ctx = stream_context_create([
+                'http' => [
+                    'method' => 'GET',
+                    'timeout' => 300,
+                    'follow_location' => true,
+                ],
+                'ssl' => [
+                    'verify_peer' => false,
+                    'verify_peer_name' => false,
+                ],
+            ]);
+            $stream = @fopen($downloadUrl, 'rb', false, $ctx);
+            if (!$stream) {
+                abort(500, '无法连接文件服务器');
+            }
+            while (!feof($stream)) {
+                echo fread($stream, 8192);
+                flush();
+            }
+            fclose($stream);
+        }, 200, [
+            'Content-Type'        => $book->mime_type ?: 'application/octet-stream',
+            'Content-Disposition' => 'attachment; filename="' . $fileName . '"',
+            'Content-Length'      => $book->file_size,
+            'Cache-Control'       => 'no-store',
+            'X-Accel-Buffering'   => 'no',
         ]);
     }
 

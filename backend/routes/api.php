@@ -26,6 +26,7 @@ Route::post('/auth/admin-login', [AuthController::class, 'adminLogin']);
 // 书籍路由（公开）
 Route::get('/books', [BookController::class, 'index']);
 Route::get('/books/hot', [BookController::class, 'hot']);
+Route::get('/books/file/{token}', [BookController::class, 'downloadFile']);
 Route::get('/books/{id}', [BookController::class, 'show']);
 
 // 需要认证的路由
