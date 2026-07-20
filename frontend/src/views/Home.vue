@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { api } from '@/api/client'
-import type { Book, Settings, PaginatedData } from '@/api/types'
+import type { Book, Settings } from '@/api/types'
 import { formatSize } from '@/utils/format'
-import { NButton, NInput, NCard, NSpace, NTag, NSkeleton, NDrawer, NDrawerContent, NDivider } from 'naive-ui'
+import { NButton, NInput, NSpace, NTag, NSkeleton, NDrawer, NDrawerContent, NDivider } from 'naive-ui'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -14,18 +14,22 @@ const hotBooks = ref<Book[]>([])
 const settings = ref<Settings>({})
 const loading = ref(true)
 const showMobileMenu = ref(false)
-const totalBooks = ref(0)
+
+// 到期时间只显示到日期
+const expiryDateShort = computed(() => {
+  const d = authStore.user?.expiry_date
+  if (!d) return '永久'
+  return d.substring(0, 10)
+})
 
 onMounted(async () => {
   try {
-    const [hotRes, settingsRes, booksRes] = await Promise.all([
+    const [hotRes, settingsRes] = await Promise.all([
       api.get<{items: Book[]}>('/books/hot?limit=8'),
       api.get<Settings>('/settings'),
-      api.get<PaginatedData<Book>>('/books?page=1&size=1'),
     ])
     hotBooks.value = hotRes.data?.items || []
     settings.value = settingsRes.data || {}
-    totalBooks.value = booksRes.data?.total || 0
   } catch { /* ignore */ }
   loading.value = false
 })
@@ -56,14 +60,13 @@ const handleBuyCard = () => {
         <!-- 桌面端按钮 -->
         <div class="nav-desktop">
           <template v-if="!authStore.isLoggedIn">
+            <n-button size="small" @click="router.push('/feedback')">💬 反馈</n-button>
+            <n-button v-if="settings.buy_link" size="small" type="primary" @click="handleBuyCard">🛒 购买卡密</n-button>
             <n-button size="small" type="primary" @click="router.push('/login')">登录</n-button>
             <n-button size="small" @click="router.push('/register')">注册</n-button>
           </template>
           <template v-else>
-            <span class="nav-user-info">
-              {{ authStore.user?.username }}
-              <template v-if="authStore.user?.expiry_date"> · 到期 {{ authStore.user.expiry_date }}</template>
-            </span>
+            <span class="nav-user-info">{{ authStore.user?.username }} · 到期 {{ expiryDateShort }}</span>
             <n-button v-if="authStore.isAdmin" size="small" type="warning" @click="router.push('/admin')">管理后台</n-button>
             <n-button v-if="!authStore.isAdmin" size="small" @click="router.push('/settings')">个人设置</n-button>
             <n-button size="small" @click="authStore.logout().then(() => router.push('/'))">退出</n-button>
@@ -88,15 +91,14 @@ const handleBuyCard = () => {
           <template v-else>
             <div class="mobile-user-card">
               <p style="margin: 0; font-weight: 600; color: var(--text-primary);">{{ authStore.user?.username }}</p>
-              <p style="margin: 4px 0 0; font-size: 13px; color: var(--text-secondary);">
-                到期：{{ authStore.user?.expiry_date || '永久' }}
-              </p>
+              <p style="margin: 4px 0 0; font-size: 13px; color: var(--text-secondary);">到期：{{ expiryDateShort }}</p>
             </div>
             <n-button v-if="authStore.isAdmin" block type="warning" @click="router.push('/admin'); showMobileMenu = false">管理后台</n-button>
             <n-button v-if="!authStore.isAdmin" block @click="router.push('/settings'); showMobileMenu = false">个人设置</n-button>
             <n-button block @click="authStore.logout().then(() => { router.push('/'); showMobileMenu = false })">退出登录</n-button>
           </template>
           <n-divider style="margin: 8px 0;" />
+          <n-button block @click="router.push('/feedback'); showMobileMenu = false">💬 意见反馈</n-button>
           <n-button v-if="settings.buy_link" block type="primary" @click="handleBuyCard(); showMobileMenu = false">🛒 购买卡密</n-button>
         </div>
       </n-drawer-content>
@@ -108,7 +110,7 @@ const handleBuyCard = () => {
         <h1 class="hero-title">📚 {{ settings.site_name || '搜书机器人' }}</h1>
         <p class="hero-desc">
           {{ settings.site_description || '电子书搜索与下载平台' }}
-          <span v-if="totalBooks > 0" class="hero-stat"> · 共 {{ totalBooks }} 本书籍</span>
+          <span v-if="settings.book_count_display" class="hero-stat"> · 共 {{ settings.book_count_display }} 本书籍</span>
         </p>
         <n-input
           v-model:value="searchQuery"
@@ -152,7 +154,8 @@ const handleBuyCard = () => {
 
       <!-- 快捷操作区 -->
       <div class="quick-actions">
-        <n-button size="large" type="primary" @click="handleBuyCard" v-if="settings.buy_link">🛒 购买卡密</n-button>
+        <n-button size="large" @click="router.push('/feedback')">💬 意见反馈</n-button>
+        <n-button v-if="settings.buy_link" size="large" type="primary" @click="handleBuyCard">🛒 购买卡密</n-button>
       </div>
     </div>
   </div>
@@ -304,7 +307,6 @@ const handleBuyCard = () => {
   font-weight: 700;
 }
 
-/* 书籍卡片网格 - 使用 auto-fill 自适应 */
 .book-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
