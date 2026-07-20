@@ -59,9 +59,9 @@ const handleBuyCard = () => {
 
         <!-- 桌面端按钮 -->
         <div class="nav-desktop">
+          <n-button size="small" @click="router.push('/feedback')">💬 反馈</n-button>
+          <n-button v-if="settings.buy_link" size="small" type="primary" @click="handleBuyCard">🛒 购买卡密</n-button>
           <template v-if="!authStore.isLoggedIn">
-            <n-button size="small" @click="router.push('/feedback')">💬 反馈</n-button>
-            <n-button v-if="settings.buy_link" size="small" type="primary" @click="handleBuyCard">🛒 购买卡密</n-button>
             <n-button size="small" type="primary" @click="router.push('/login')">登录</n-button>
             <n-button size="small" @click="router.push('/register')">注册</n-button>
           </template>
@@ -84,6 +84,9 @@ const handleBuyCard = () => {
     <n-drawer v-model:show="showMobileMenu" placement="right" :width="280">
       <n-drawer-content title="菜单" :closable="true">
         <div class="mobile-menu-items">
+          <n-button block @click="router.push('/feedback'); showMobileMenu = false">💬 意见反馈</n-button>
+          <n-button v-if="settings.buy_link" block type="primary" @click="handleBuyCard(); showMobileMenu = false">🛒 购买卡密</n-button>
+          <n-divider style="margin: 8px 0;" />
           <template v-if="!authStore.isLoggedIn">
             <n-button block type="primary" @click="router.push('/login'); showMobileMenu = false">登录</n-button>
             <n-button block @click="router.push('/register'); showMobileMenu = false">注册</n-button>
@@ -97,9 +100,6 @@ const handleBuyCard = () => {
             <n-button v-if="!authStore.isAdmin" block @click="router.push('/settings'); showMobileMenu = false">个人设置</n-button>
             <n-button block @click="authStore.logout().then(() => { router.push('/'); showMobileMenu = false })">退出登录</n-button>
           </template>
-          <n-divider style="margin: 8px 0;" />
-          <n-button block @click="router.push('/feedback'); showMobileMenu = false">💬 意见反馈</n-button>
-          <n-button v-if="settings.buy_link" block type="primary" @click="handleBuyCard(); showMobileMenu = false">🛒 购买卡密</n-button>
         </div>
       </n-drawer-content>
     </n-drawer>
@@ -150,12 +150,6 @@ const handleBuyCard = () => {
 
       <div v-if="loading" style="text-align: center; padding: 40px;">
         <n-skeleton text :repeat="3" />
-      </div>
-
-      <!-- 快捷操作区 -->
-      <div class="quick-actions">
-        <n-button size="large" @click="router.push('/feedback')">💬 意见反馈</n-button>
-        <n-button v-if="settings.buy_link" size="large" type="primary" @click="handleBuyCard">🛒 购买卡密</n-button>
       </div>
     </div>
   </div>
@@ -340,16 +334,6 @@ const handleBuyCard = () => {
   white-space: nowrap;
 }
 
-/* 快捷操作 */
-.quick-actions {
-  text-align: center;
-  margin-top: 60px;
-  display: flex;
-  justify-content: center;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
 /* 移动端适配 */
 @media (max-width: 768px) {
   .nav-desktop {
@@ -397,11 +381,6 @@ const handleBuyCard = () => {
 
   .hot-books-section {
     padding: 0 12px 30px;
-  }
-
-  .section-title {
-    font-size: 20px;
-    margin-bottom: 16px;
   }
 
   .quick-actions {
