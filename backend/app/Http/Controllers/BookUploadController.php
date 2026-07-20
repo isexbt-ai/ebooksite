@@ -3,9 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Book;
+use App\Models\AuditLog;
 use App\Services\R2StorageService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Str;
 
 class BookUploadController extends Controller
@@ -15,80 +16,137 @@ class BookUploadController extends Controller
 
     public function __construct(R2StorageService $r2)
     {
+        parent::__construct();
         $this->r2 = $r2;
         $this->chunkSize = 5 * 1024 * 1024; // 5MB 分片
     }
 
-    public function initiateMultipart(Request $request)
+    /**
+     * 单文件上传
+     */
+    public function upload(Request $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'title'    => 'required|string|max:255',
-            'author'   => 'required|string|max:255',
+        $validated = $request->validate([
+            'title'    => 'nullable|string|max:255',
+            'author'   => 'nullable|string|max:255',
+            'file'     => 'required|file|mimes:txt,epub,pdf,mobi,azw3|max:52428800',
             'category' => 'nullable|string|max:50',
-            'file_name'=> 'required|string',
-            'file_size'=> 'required|integer',
+            'tags'     => 'nullable|string|max:255',
+            'description' => 'nullable|string|max:2000',
         ]);
 
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
+        $file = $request->file('file');
+        $extension = $file->getClientOriginalExtension();
+        $fileHash = hash_file('md5', $file->getRealPath());
 
-        $extension = pathinfo($request->file_name, PATHINFO_EXTENSION);
+        // 自动从文件名提取书名和作者
+        $title = $validated['title'] ?? pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+        $author = $validated['author'] ?? '未知';
+
         $key = sprintf(
             'novels/%s/%s_%s.%s',
             date('Y/m'),
-            Str::slug($request->title),
+            Str::slug($title),
             uniqid(),
             $extension
         );
 
-        $uploadId = $this->r2->initiateMultipartUpload($key);
+        $url = $this->r2->upload($file->getRealPath(), $key, $file->getMimeType());
 
-        if (!$uploadId) {
-            return response()->json(['message' => '初始化分片上传失败'], 500);
+        if (!$url) {
+            return $this->api->error('上传失败', 3001, 500);
         }
 
-        $totalChunks = ceil($request->file_size / $this->chunkSize);
+        $book = Book::create([
+            'title'         => $title,
+            'author'        => $author,
+            'category'      => $validated['category'] ?? null,
+            'tags'          => $validated['tags'] ?? null,
+            'description'   => $validated['description'] ?? null,
+            'r2_key'        => $key,
+            'r2_url'        => $url,
+            'file_size'     => $file->getSize(),
+            'file_format'   => $extension,
+            'mime_type'     => $file->getMimeType(),
+            'upload_status' => 'completed',
+            'uploader_id'   => auth()->id(),
+            'file_hash'     => $fileHash,
+        ]);
+
+        AuditLog::log('upload', 'book', $book->id);
+
+        return $this->api->success($book, '上传成功', 201);
+    }
+
+    /**
+     * 初始化分片上传
+     */
+    public function initiateMultipart(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'title'     => 'required|string|max:255',
+            'author'    => 'required|string|max:255',
+            'category'  => 'nullable|string|max:50',
+            'file_name' => 'required|string',
+            'file_size' => 'required|integer',
+            'mime_type' => 'nullable|string',
+        ]);
+
+        $extension = pathinfo($validated['file_name'], PATHINFO_EXTENSION);
+        $key = sprintf(
+            'novels/%s/%s_%s.%s',
+            date('Y/m'),
+            Str::slug($validated['title']),
+            uniqid(),
+            $extension
+        );
+
+        $uploadId = $this->r2->initiateMultipartUpload($key, $validated['mime_type'] ?? null);
+
+        if (!$uploadId) {
+            return $this->api->error('初始化分片上传失败', 3002, 500);
+        }
+
+        $totalChunks = ceil($validated['file_size'] / $this->chunkSize);
 
         $book = Book::create([
-            'title'         => $request->title,
-            'author'        => $request->author,
-            'category'      => $request->category,
+            'title'         => $validated['title'],
+            'author'        => $validated['author'],
+            'category'      => $validated['category'] ?? null,
             'r2_key'        => $key,
-            'file_size'     => $request->file_size,
-            'mime_type'     => $request->input('mime_type', 'application/octet-stream'),
+            'file_size'     => $validated['file_size'],
+            'file_format'   => $extension,
+            'mime_type'     => $validated['mime_type'] ?? 'application/octet-stream',
             'upload_status' => 'uploading',
             'upload_id'     => $uploadId,
             'uploader_id'   => auth()->id(),
         ]);
 
-        return response()->json([
-            'message'      => '初始化成功',
+        return $this->api->success([
             'book_id'      => $book->id,
             'upload_id'    => $uploadId,
             'key'          => $key,
             'chunk_size'   => $this->chunkSize,
             'total_chunks' => $totalChunks,
-        ]);
+        ], '初始化成功');
     }
 
-    public function uploadChunk(Request $request)
+    /**
+     * 上传分片
+     */
+    public function uploadChunk(Request $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
+        $validated = $request->validate([
             'book_id'     => 'required|integer',
             'upload_id'   => 'required|string',
             'part_number' => 'required|integer|min:1',
             'chunk'       => 'required|file',
         ]);
 
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
+        $book = Book::findOrFail($validated['book_id']);
 
-        $book = Book::findOrFail($request->book_id);
-
-        if ($book->upload_id !== $request->upload_id) {
-            return response()->json(['message' => '上传ID不匹配'], 400);
+        if ($book->upload_id !== $validated['upload_id']) {
+            return $this->api->error('上传ID不匹配', 3003);
         }
 
         $chunk = $request->file('chunk');
@@ -97,245 +155,98 @@ class BookUploadController extends Controller
 
         $part = $this->r2->uploadPart(
             $book->r2_key,
-            $request->upload_id,
-            $request->part_number,
+            $validated['upload_id'],
+            $validated['part_number'],
             $content,
             $contentMd5
         );
 
         if (!$part) {
-            return response()->json(['message' => '分片上传失败'], 500);
+            return $this->api->error('分片上传失败', 3004, 500);
         }
 
-        $parts = $book->upload_parts ? json_decode($book->upload_parts, true) : [];
+        $parts = $book->upload_parts ?? [];
         $parts[] = $part;
-        $book->upload_parts = json_encode($parts);
+        $book->upload_parts = $parts;
         $book->save();
 
-        return response()->json([
-            'message'      => '分片上传成功',
-            'part_number'  => $request->part_number,
-            'etag'         => $part['ETag'],
-        ]);
+        return $this->api->success([
+            'part_number' => $validated['part_number'],
+            'etag'        => $part['ETag'],
+        ], '分片上传成功');
     }
 
-    public function completeMultipart(Request $request)
+    /**
+     * 完成分片上传
+     */
+    public function completeMultipart(Request $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
+        $validated = $request->validate([
             'book_id'   => 'required|integer',
             'upload_id' => 'required|string',
         ]);
 
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
+        $book = Book::findOrFail($validated['book_id']);
+
+        if ($book->upload_id !== $validated['upload_id']) {
+            return $this->api->error('上传ID不匹配', 3003);
         }
 
-        $book = Book::findOrFail($request->book_id);
-
-        if ($book->upload_id !== $request->upload_id) {
-            return response()->json(['message' => '上传ID不匹配'], 400);
-        }
-
-        $parts = json_decode($book->upload_parts, true);
+        $parts = $book->upload_parts;
 
         if (empty($parts)) {
-            return response()->json(['message' => '没有分片数据'], 400);
+            return $this->api->error('没有分片数据', 3005);
         }
 
-        $url = $this->r2->completeMultipartUpload($book->r2_key, $request->upload_id, $parts);
+        $url = $this->r2->completeMultipartUpload($book->r2_key, $validated['upload_id'], $parts);
 
         if (!$url) {
-            return response()->json(['message' => '完成上传失败'], 500);
+            return $this->api->error('完成上传失败', 3006, 500);
         }
 
-        $book->r2_url = $url;
-        $book->upload_status = 'completed';
-        $book->save();
-
-        return response()->json([
-            'message' => '上传完成',
-            'book'    => $book,
+        $book->update([
+            'r2_url'        => $url,
+            'upload_status' => 'completed',
         ]);
+
+        AuditLog::log('upload_multipart', 'book', $book->id);
+
+        return $this->api->success($book, '上传完成');
     }
 
-    public function abortMultipart(Request $request)
+    /**
+     * 取消分片上传
+     */
+    public function abortMultipart(Request $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
+        $validated = $request->validate([
             'book_id'   => 'required|integer',
             'upload_id' => 'required|string',
         ]);
 
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
+        $book = Book::findOrFail($validated['book_id']);
+
+        if ($book->upload_id !== $validated['upload_id']) {
+            return $this->api->error('上传ID不匹配', 3003);
         }
 
-        $book = Book::findOrFail($request->book_id);
-
-        if ($book->upload_id !== $request->upload_id) {
-            return response()->json(['message' => '上传ID不匹配'], 400);
-        }
-
-        $this->r2->abortMultipartUpload($book->r2_key, $request->upload_id);
+        $this->r2->abortMultipartUpload($book->r2_key, $validated['upload_id']);
         $book->delete();
 
-        return response()->json(['message' => '上传已取消']);
+        return $this->api->success(null, '上传已取消');
     }
 
-    public function upload(Request $request)
+    /**
+     * 批量上传（带去重）
+     */
+    public function batchUploadDedup(Request $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'title'    => 'required|string|max:255',
-            'author'   => 'required|string|max:255',
-            'file'     => 'required|file|mimes:txt,epub,pdf,mobi,azw3|max:52428800',
-            'category' => 'nullable|string|max:50',
+        $validated = $request->validate([
+            'files'          => 'required|array',
+            'files.*'        => 'required|file|mimes:txt,epub,pdf,mobi,azw3|max:52428800',
+            'titles'         => 'nullable|array',
+            'authors'        => 'nullable|array',
         ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
-        $file = $request->file('file');
-        $extension = $file->getClientOriginalExtension();
-
-        $key = sprintf(
-            'novels/%s/%s_%s.%s',
-            date('Y/m'),
-            Str::slug($request->title),
-            uniqid(),
-            $extension
-        );
-
-        $url = $this->r2->upload($file->getRealPath(), $key, $file->getMimeType());
-
-        if (!$url) {
-            return response()->json(['message' => '上传失败'], 500);
-        }
-
-        $book = Book::create([
-            'title'         => $request->title,
-            'author'        => $request->author,
-            'category'      => $request->category,
-            'r2_key'        => $key,
-            'r2_url'        => $url,
-            'file_size'     => $file->getSize(),
-            'mime_type'     => $file->getMimeType(),
-            'upload_status' => 'completed',
-            'uploader_id'   => auth()->id(),
-        ]);
-
-        return response()->json([
-            'message' => '上传成功',
-            'book'    => $book,
-        ]);
-    }
-
-    public function download(int $id)
-    {
-        $book = Book::findOrFail($id);
-
-        if ($book->upload_status !== 'completed') {
-            return response()->json(['message' => '文件尚未上传完成'], 400);
-        }
-
-        $url = $this->r2->getPresignedUrl($book->r2_key);
-
-        if (!$url) {
-            return response()->json(['message' => '生成下载链接失败'], 500);
-        }
-
-        return response()->json([
-            'download_url' => $url,
-            'expires_at'   => now()->addSeconds(config('services.r2.presigned_expires', 3600)),
-        ]);
-    }
-
-    public function destroy(int $id)
-    {
-        $book = Book::findOrFail($id);
-
-        if ($book->r2_key) {
-            $this->r2->delete($book->r2_key);
-        }
-
-        $book->delete();
-
-        return response()->json(['message' => '删除成功']);
-    }
-
-    public function batchUpload(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'books' => 'required|array',
-            'books.*.title'  => 'required|string|max:255',
-            'books.*.author' => 'required|string|max:255',
-            'books.*.file'   => 'required|file|mimes:txt,epub,pdf,mobi,azw3|max:52428800',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
-        $results = [];
-        $errors = [];
-
-        foreach ($request->books as $index => $bookData) {
-            try {
-                $file = $bookData['file'];
-                $extension = $file->getClientOriginalExtension();
-
-                $key = sprintf(
-                    'novels/%s/%s_%s.%s',
-                    date('Y/m'),
-                    Str::slug($bookData['title']),
-                    uniqid(),
-                    $extension
-                );
-
-                $url = $this->r2->upload($file->getRealPath(), $key, $file->getMimeType());
-
-                if (!$url) {
-                    $errors[] = ['index' => $index, 'message' => '上传失败'];
-                    continue;
-                }
-
-                $book = Book::create([
-                    'title'         => $bookData['title'],
-                    'author'        => $bookData['author'],
-                    'category'      => $bookData['category'] ?? null,
-                    'r2_key'        => $key,
-                    'r2_url'        => $url,
-                    'file_size'     => $file->getSize(),
-                    'mime_type'     => $file->getMimeType(),
-                    'upload_status' => 'completed',
-                    'uploader_id'   => auth()->id(),
-                ]);
-
-                $results[] = $book;
-            } catch (\Exception $e) {
-                $errors[] = ['index' => $index, 'message' => $e->getMessage()];
-            }
-        }
-
-        return response()->json([
-            'message' => '批量上传完成',
-            'success' => count($results),
-            'failed'  => count($errors),
-            'books'   => $results,
-            'errors'  => $errors,
-        ]);
-    }
-
-
-    public function batchUploadWithDedup(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'files' => 'required|array',
-            'files.*' => 'required|file|mimes:txt,epub,pdf,mobi,azw3|max:52428800',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
 
         $results = [];
         $duplicates = [];
@@ -345,13 +256,13 @@ class BookUploadController extends Controller
             try {
                 $fileHash = hash_file('md5', $file->getRealPath());
                 $fileSize = $file->getSize();
-                
+
                 $existingBook = Book::where('file_hash', $fileHash)->first();
-                
+
                 if ($existingBook) {
                     if ($fileSize > $existingBook->file_size) {
                         $this->r2->delete($existingBook->r2_key);
-                        
+
                         $extension = $file->getClientOriginalExtension();
                         $key = sprintf(
                             'novels/%s/%s_%s.%s',
@@ -360,9 +271,9 @@ class BookUploadController extends Controller
                             uniqid(),
                             $extension
                         );
-                        
+
                         $url = $this->r2->upload($file->getRealPath(), $key, $file->getMimeType());
-                        
+
                         if ($url) {
                             $existingBook->update([
                                 'r2_key'    => $key,
@@ -389,7 +300,7 @@ class BookUploadController extends Controller
                 $extension = $file->getClientOriginalExtension();
                 $title = $request->input("titles.$index", $file->getClientOriginalName());
                 $author = $request->input("authors.$index", 'Unknown');
-                
+
                 $key = sprintf(
                     'novels/%s/%s_%s.%s',
                     date('Y/m'),
@@ -411,6 +322,7 @@ class BookUploadController extends Controller
                     'r2_key'        => $key,
                     'r2_url'        => $url,
                     'file_size'     => $fileSize,
+                    'file_format'   => $extension,
                     'file_hash'     => $fileHash,
                     'mime_type'     => $file->getMimeType(),
                     'upload_status' => 'completed',
@@ -423,15 +335,41 @@ class BookUploadController extends Controller
             }
         }
 
-        return response()->json([
-            'err'        => 'ok',
-            'message'    => '批量上传完成',
+        AuditLog::log('batch_upload', 'book', null, null, [
+            'success'    => count($results),
+            'duplicates' => count($duplicates),
+            'failed'     => count($errors),
+        ]);
+
+        return $this->api->success([
             'success'    => count($results),
             'duplicates' => count($duplicates),
             'failed'     => count($errors),
             'books'      => $results,
             'dup_list'   => $duplicates,
             'errors'     => $errors,
-        ]);
+        ], '批量上传完成');
+    }
+
+    /**
+     * 删除书籍
+     */
+    public function destroy(int $id): JsonResponse
+    {
+        $book = Book::find($id);
+
+        if (!$book) {
+            return $this->api->notFound('书籍不存在');
+        }
+
+        if ($book->r2_key) {
+            $this->r2->delete($book->r2_key);
+        }
+
+        $book->delete();
+
+        AuditLog::log('delete', 'book', $id);
+
+        return $this->api->success(null, '删除成功');
     }
 }

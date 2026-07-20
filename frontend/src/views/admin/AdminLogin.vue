@@ -2,122 +2,64 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { api } from '@/api/client'
+import type { LoginData } from '@/api/types'
+import { useMessage } from 'naive-ui'
+import { NCard, NForm, NFormItem, NInput, NButton } from 'naive-ui'
 
 const router = useRouter()
 const authStore = useAuthStore()
-const username = ref('')
-const password = ref('')
+const message = useMessage()
+const form = ref({ username: '', password: '' })
 const loading = ref(false)
-const error = ref('')
 
-const login = async () => {
-  if (!username.value || !password.value) {
-    error.value = '请输入用户名和密码'
-    return
-  }
-
+const handleLogin = async () => {
   loading.value = true
-  error.value = ''
-
   try {
-    const API_BASE = import.meta.env.VITE_API_BASE || '/api'
-    const response = await fetch(`${API_BASE}/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        username: username.value,
-        password: password.value,
-      }),
+    const res = await api.post<LoginData>('/auth/admin-login', form.value)
+    authStore.setToken(res.data.token)
+    authStore.setUser({
+      id: res.data.user_id, username: res.data.username, name: res.data.name,
+      email: null, avatar: null, admin: true, active: true, expiry_date: null,
     })
-
-    const data = await response.json()
-
-    if (data.err && data.err !== 'ok') {
-      throw new Error(data.msg || data.err)
-    }
-
-    if (data.data) {
-      localStorage.setItem('admin_token', data.data.token)
-      localStorage.setItem('token', data.data.token)
-      // 更新 auth store
-      authStore.setToken(data.data.token)
-      authStore.setUser({
-        id: data.data.user_id,
-        username: data.data.username,
-        name: data.data.name,
-        email: '',
-        avatar: '',
-        admin: true,
-        active: true,
-        expiry_date: null,
-      })
-      // 使用 router.push 跳转
-      router.push('/admin')
-    }
-  } catch (e: any) {
-    error.value = e.message || '登录失败'
-  } finally {
-    loading.value = false
-  }
+    message.success('登录成功')
+    router.push('/admin')
+  } catch (e: any) { message.error(e.message) }
+  loading.value = false
 }
 </script>
 
 <template>
-  <div class="admin-login">
-    <div class="login-card">
-      <h1>后台管理登录</h1>
-      <p class="subtitle">请输入管理员账号</p>
+  <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--gradient-hero); position: relative; overflow: hidden;">
+    <!-- 装饰背景 -->
+    <div style="position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: radial-gradient(circle at 30% 50%, rgba(255,255,255,0.1) 0%, transparent 50%); pointer-events: none;"></div>
+    <div style="position: absolute; bottom: -30%; right: -30%; width: 60%; height: 60%; background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 60%); border-radius: 50%; pointer-events: none;"></div>
 
-      <div class="form-group">
-        <label>用户名</label>
-        <input v-model="username" type="text" placeholder="请输入用户名" @keyup.enter="login" />
+    <n-card
+      style="width: 420px; background: var(--glass-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid var(--glass-border); border-radius: 16px; box-shadow: var(--glass-shadow); position: relative; z-index: 1;"
+    >
+      <div style="text-align: center; margin-bottom: 24px;">
+        <div style="font-size: 40px; margin-bottom: 8px;">📚</div>
+        <h2 style="margin: 0; font-size: 22px; font-weight: 700; color: var(--text-primary);">管理员登录</h2>
+        <p style="margin: 8px 0 0; font-size: 14px; color: var(--text-secondary);">搜书机器人后台管理系统</p>
       </div>
-
-      <div class="form-group">
-        <label>密码</label>
-        <input v-model="password" type="password" placeholder="请输入密码" @keyup.enter="login" />
-      </div>
-
-      <div v-if="error" class="error">{{ error }}</div>
-
-      <button class="login-btn" :disabled="loading" @click="login">
-        {{ loading ? '登录中...' : '登录' }}
-      </button>
-    </div>
+      <n-form>
+        <n-form-item label="用户名">
+          <n-input v-model:value="form.username" placeholder="请输入管理员用户名" @keyup.enter="handleLogin" />
+        </n-form-item>
+        <n-form-item label="密码">
+          <n-input v-model:value="form.password" type="password" show-password-on="click" placeholder="请输入管理员密码" @keyup.enter="handleLogin" />
+        </n-form-item>
+        <n-button
+          type="primary"
+          block
+          :loading="loading"
+          @click="handleLogin"
+          style="height: 42px; font-size: 15px; font-weight: 600; border-radius: 10px; background: var(--gradient-hero); border: none;"
+        >
+          登 录
+        </n-button>
+      </n-form>
+    </n-card>
   </div>
 </template>
-
-<style scoped>
-.admin-login {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 100vh;
-  background: #f5f6f8;
-  padding: 20px;
-}
-.login-card {
-  background: white;
-  border: 1px solid #e5e7eb;
-  padding: 40px;
-  width: 100%;
-  max-width: 400px;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-}
-h1 { text-align: center; margin: 0 0 4px 0; color: #111827; font-size: 22px; }
-.subtitle { text-align: center; margin: 0 0 24px 0; color: #6b7280; font-size: 14px; }
-
-.form-group { margin-bottom: 16px; }
-.form-group label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500; color: #374151; }
-.form-group input { width: 100%; padding: 10px 14px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; box-sizing: border-box; transition: border-color 0.15s; }
-.form-group input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
-
-.error { background: #fef2f2; border: 1px solid #fecaca; padding: 10px 14px; color: #dc2626; font-size: 13px; margin-bottom: 16px; border-radius: 6px; }
-
-.login-btn { width: 100%; padding: 12px; background: #3b82f6; color: white; border: none; border-radius: 6px; font-size: 15px; font-weight: 500; cursor: pointer; transition: background 0.15s; }
-.login-btn:hover { background: #2563eb; }
-.login-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-</style>

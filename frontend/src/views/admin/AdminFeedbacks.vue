@@ -1,107 +1,82 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { useApi } from '@/composables/useApi'
+import { ref, onMounted, h } from 'vue'
+import { api } from '@/api/client'
+import type { Feedback, PaginatedData } from '@/api/types'
+import { formatDateTime } from '@/utils/format'
+import { useMessage, useDialog } from 'naive-ui'
+import { NCard, NDataTable, NButton, NTag, NPagination } from 'naive-ui'
+import type { DataTableColumns } from 'naive-ui'
 
-const feedbacks = ref<any[]>([])
-const loading = ref(false)
-const page = ref(1)
+const message = useMessage()
+const dialog = useDialog()
+const feedbacks = ref<Feedback[]>([])
 const total = ref(0)
-const pageSize = ref(20)
+const page = ref(1)
+const loading = ref(false)
 
 const fetchFeedbacks = async () => {
   loading.value = true
   try {
-    const api = useApi()
-    const data = await api.get(`/admin/feedbacks?page=${page.value}&size=${pageSize.value}`)
-    feedbacks.value = data.data?.items || []
-    total.value = data.data?.total || 0
-  } catch (e) {
-    console.error(e)
-  } finally {
-    loading.value = false
-  }
+    const res = await api.get<PaginatedData<Feedback>>(`/admin/feedbacks?page=${page.value}&size=20`)
+    feedbacks.value = res.data?.items || []
+    total.value = res.data?.total || 0
+  } catch { /* ignore */ }
+  loading.value = false
 }
-
-const deleteFeedback = async (id: number) => {
-  if (!confirm('确定删除？')) return
-  try {
-    const api = useApi()
-    await api.post(`/admin/feedbacks/${id}/delete`)
-    fetchFeedbacks()
-  } catch (e) {
-    alert('删除失败')
-  }
-}
-
-const formatDate = (date: string) => {
-  if (!date) return '-'
-  return new Date(date).toLocaleDateString('zh-CN')
-}
-
-const totalPages = () => {
-  return Math.ceil(total.value / pageSize.value)
-}
-
-const changePage = (p: number) => {
-  page.value = p
-  fetchFeedbacks()
-}
-
 onMounted(fetchFeedbacks)
+
+const statusTag = (status: string) => {
+  const map: Record<string, 'warning' | 'info' | 'success'> = { pending: 'warning', replied: 'info', resolved: 'success' }
+  return map[status] || 'default'
+}
+const statusLabel = (status: string) => {
+  const map: Record<string, string> = { pending: '待处理', replied: '已回复', resolved: '已解决' }
+  return map[status] || status
+}
+
+const updateStatus = async (id: number, status: string) => {
+  try { await api.put(`/admin/feedbacks/${id}`, { status }); message.success('状态已更新'); fetchFeedbacks() }
+  catch (e: any) { message.error(e.message) }
+}
+
+const deleteFeedback = (fb: Feedback) => {
+  dialog.warning({
+    title: '确认删除', content: '确定要删除这条反馈吗？',
+    positiveText: '删除', negativeText: '取消',
+    onPositiveClick: async () => {
+      try { await api.delete(`/admin/feedbacks/${fb.id}`); message.success('删除成功'); fetchFeedbacks() }
+      catch (e: any) { message.error(e.message) }
+    },
+  })
+}
+
+const columns: DataTableColumns<Feedback> = [
+  { title: 'ID', key: 'id', width: 60 },
+  { title: '内容', key: 'content', ellipsis: { tooltip: true } },
+  { title: '联系方式', key: 'contact' },
+  { title: '状态', key: 'status', width: 90, render: (row) => h(NTag, { type: statusTag(row.status), size: 'small' }, { default: () => statusLabel(row.status) }) },
+  { title: '时间', key: 'created_at', width: 150, render: (row) => formatDateTime(row.created_at) },
+  {
+    title: '操作', key: 'actions', width: 200,
+    render: (row) => row.status !== 'resolved'
+      ? h('div', { style: 'display:flex;gap:8px;' }, [
+          h(NButton, { size: 'small', onClick: () => updateStatus(row.id, 'replied') }, { default: () => '回复' }),
+          h(NButton, { size: 'small', type: 'success', onClick: () => updateStatus(row.id, 'resolved') }, { default: () => '解决' }),
+          h(NButton, { size: 'small', type: 'error', onClick: () => deleteFeedback(row) }, { default: () => '删除' }),
+        ])
+      : h(NButton, { size: 'small', type: 'error', onClick: () => deleteFeedback(row) }, { default: () => '删除' }),
+  },
+]
 </script>
 
 <template>
-  <div class="admin-feedbacks">
-    <h1>反馈管理</h1>
-
-    <div v-if="loading" class="loading">加载中...</div>
-    <div v-else-if="feedbacks.length === 0" class="empty">暂无反馈</div>
-    <div v-else>
-      <table>
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>内容</th>
-            <th>联系方式</th>
-            <th>提交时间</th>
-            <th>操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="feedback in feedbacks" :key="feedback.id">
-            <td>{{ feedback.id }}</td>
-            <td class="content">{{ feedback.content }}</td>
-            <td>{{ feedback.contact || '-' }}</td>
-            <td>{{ formatDate(feedback.created_at) }}</td>
-            <td><button class="delete-btn" @click="deleteFeedback(feedback.id)">删除</button></td>
-          </tr>
-        </tbody>
-      </table>
-
-      <div class="pagination">
-        <button :disabled="page <= 1" @click="changePage(page - 1)">上一页</button>
-        <span>第 {{ page }} / {{ totalPages() }} 页 (共 {{ total }} 条)</span>
-        <button :disabled="page >= totalPages()" @click="changePage(page + 1)">下一页</button>
+  <div>
+    <h2 style="color: var(--text-primary); margin-bottom: 20px; font-weight: 700;">反馈管理</h2>
+    <n-card style="background: var(--glass-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid var(--glass-border); border-radius: 16px; box-shadow: var(--glass-shadow);">
+      <n-data-table :columns="columns" :data="feedbacks" :loading="loading" :bordered="false" />
+      <div style="display: flex; justify-content: center; margin-top: 16px;">
+        <n-pagination v-if="total > 20" :page="page" :page-count="Math.ceil(total / 20)" @update:page="p => { page = p; fetchFeedbacks() }" />
       </div>
-    </div>
+    </n-card>
   </div>
 </template>
-
-<style scoped>
-.admin-feedbacks { padding: 20px; max-width: 1200px; margin: 0 auto; }
-h1 { margin-bottom: 20px; color: #111827; font-size: 20px; }
-table { width: 100%; border-collapse: collapse; margin-top: 16px; background: #fff; border-radius: 8px; overflow: hidden; }
-th, td { padding: 12px 16px; text-align: left; }
-th { background: #f9fafb; font-weight: 600; color: #374151; font-size: 13px; border-bottom: 1px solid #e5e7eb; }
-td { color: #374151; font-size: 14px; border-bottom: 1px solid #f3f4f6; }
-tr:hover td { background: #f9fafb; }
-.content { max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.delete-btn { padding: 4px 12px; background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; border-radius: 4px; cursor: pointer; font-size: 13px; }
-.delete-btn:hover { background: #fee2e2; }
-.pagination { display: flex; justify-content: center; align-items: center; gap: 16px; margin-top: 20px; padding: 12px; }
-.pagination button { padding: 6px 14px; background: #fff; color: #374151; border: 1px solid #d1d5db; border-radius: 6px; cursor: pointer; font-size: 13px; }
-.pagination button:hover { background: #f9fafb; border-color: #9ca3af; }
-.pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
-.pagination span { color: #6b7280; font-size: 14px; }
-.loading, .empty { text-align: center; padding: 40px; color: #6b7280; }
-</style>

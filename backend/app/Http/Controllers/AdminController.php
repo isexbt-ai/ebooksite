@@ -3,85 +3,59 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
-use App\Models\Card;
 use App\Models\Book;
+use App\Models\Card;
 use App\Models\Feedback;
-use App\Models\SystemSetting;
+use App\Models\Download;
+use App\Models\Setting;
+use App\Models\AuditLog;
+use App\Services\R2StorageService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class AdminController extends Controller
 {
     /**
-     * 管理员登录
+     * 仪表盘统计
      */
-    public function login(Request $request): JsonResponse
+    public function dashboard(): JsonResponse
     {
-        $validated = $request->validate([
-            'username' => 'required|string',
-            'password' => 'required|string',
-        ]);
-
-        $user = User::where('username', strtolower($validated['username']))->first();
-
-        if (!$user || !Hash::check($validated['password'], $user->password)) {
-            return response()->json(['err' => 'invalid_credentials', 'msg' => '用户名或密码错误'], 400);
-        }
-
-        if (!$user->is_admin) {
-            return response()->json(['err' => 'forbidden', 'msg' => '需要管理员权限'], 403);
-        }
-
-        $token = $user->createToken('admin')->plainTextToken;
-
-        return response()->json([
-            'err' => 'ok',
-            'data' => [
-                'user_id' => $user->id,
-                'username' => $user->username,
-                'name' => $user->name,
-                'admin' => true,
-                'token' => $token,
-            ],
+        return $this->api->success([
+            'total_users'    => User::count(),
+            'active_users'   => User::where('active', true)->count(),
+            'expired_users'  => User::where('expiry_date', '<', now())->count(),
+            'total_books'    => Book::where('upload_status', 'completed')->count(),
+            'total_cards'    => Card::count(),
+            'used_cards'     => Card::where('used', true)->count(),
+            'total_downloads' => Download::count(),
+            'today_downloads' => Download::whereDate('created_at', today())->count(),
+            'pending_feedbacks' => Feedback::where('status', 'pending')->count(),
         ]);
     }
 
     /**
-     * 获取统计数据
-     */
-    public function stats(): JsonResponse
-    {
-        return response()->json([
-            'err' => 'ok',
-            'data' => [
-                'total_users' => User::count(),
-                'total_books' => Book::count(),
-                'total_cards' => Card::count(),
-            ],
-        ]);
-    }
-
-    /**
-     * 获取用户列表
+     * 用户列表
      */
     public function users(Request $request): JsonResponse
     {
         $page = $request->get('page', 1);
         $size = $request->get('size', 20);
+        $search = $request->get('search', '');
 
-        $users = User::orderBy('created_at', 'desc')
+        $query = User::query();
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('username', 'like', "%{$search}%")
+                  ->orWhere('name', 'like', "%{$search}%");
+            });
+        }
+
+        $users = $query->orderBy('created_at', 'desc')
             ->paginate($size, ['*'], 'page', $page);
 
-        return response()->json([
-            'err' => 'ok',
-            'data' => [
-                'total' => $users->total(),
-                'items' => $users->items(),
-                'page' => $users->currentPage(),
-                'size' => $users->perPage(),
-            ],
-        ]);
+        return $this->api->paginate($users);
     }
 
     /**
@@ -92,38 +66,46 @@ class AdminController extends Controller
         $user = User::find($id);
 
         if (!$user) {
-            return response()->json(['err' => 'not_found', 'msg' => '用户不存在'], 404);
+            return $this->api->notFound('用户不存在');
+        }
+
+        if ($user->is_admin) {
+            return $this->api->error('不能删除管理员', 4001, 403);
         }
 
         $user->delete();
 
-        return response()->json(['err' => 'ok']);
+        AuditLog::log('delete', 'user', $id);
+
+        return $this->api->success(null, '删除成功');
     }
 
     /**
-     * 获取卡密列表
+     * 批量删除用户
      */
-    public function cards(Request $request): JsonResponse
+    public function batchDeleteUsers(Request $request): JsonResponse
     {
-        $page = $request->get('page', 1);
-        $size = $request->get('size', 20);
-
-        $cards = Card::orderBy('created_at', 'desc')
-            ->paginate($size, ['*'], 'page', $page);
-
-        return response()->json([
-            'err' => 'ok',
-            'data' => [
-                'total' => $cards->total(),
-                'items' => $cards->items(),
-                'page' => $cards->currentPage(),
-                'size' => $cards->perPage(),
-            ],
+        $validated = $request->validate([
+            'ids'   => 'required|array',
+            'ids.*' => 'integer',
         ]);
+
+        $deleted = 0;
+        foreach ($validated['ids'] as $id) {
+            $user = User::find($id);
+            if ($user && !$user->is_admin) {
+                $user->delete();
+                $deleted++;
+            }
+        }
+
+        AuditLog::log('batch_delete', 'user', null, null, ['count' => $deleted]);
+
+        return $this->api->success(['deleted' => $deleted], "已删除{$deleted}个用户");
     }
 
     /**
-     * 获取书籍列表
+     * 书籍列表（管理）
      */
     public function books(Request $request): JsonResponse
     {
@@ -137,18 +119,10 @@ class AdminController extends Controller
             $query->search($search);
         }
 
-        $books = $query->orderBy('title')
+        $books = $query->orderBy('created_at', 'desc')
             ->paginate($size, ['*'], 'page', $page);
 
-        return response()->json([
-            'err' => 'ok',
-            'data' => [
-                'total' => $books->total(),
-                'items' => $books->items(),
-                'page' => $books->currentPage(),
-                'size' => $books->perPage(),
-            ],
-        ]);
+        return $this->api->paginate($books);
     }
 
     /**
@@ -159,39 +133,187 @@ class AdminController extends Controller
         $book = Book::find($id);
 
         if (!$book) {
-            return response()->json(['err' => 'not_found', 'msg' => '书籍不存在'], 404);
+            return $this->api->notFound('书籍不存在');
         }
 
-        // 删除文件
-        if (file_exists($book->file_path)) {
-            unlink($book->file_path);
+        if ($book->r2_key) {
+            $r2 = app(R2StorageService::class);
+            $r2->delete($book->r2_key);
         }
 
         $book->delete();
 
-        return response()->json(['err' => 'ok']);
+        AuditLog::log('delete', 'book', $id);
+
+        return $this->api->success(null, '删除成功');
     }
 
     /**
-     * 获取反馈列表
+     * 批量删除书籍
+     */
+    public function batchDeleteBooks(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'ids'   => 'required|array',
+            'ids.*' => 'integer',
+        ]);
+
+        $r2 = app(R2StorageService::class);
+        $deleted = 0;
+
+        foreach ($validated['ids'] as $id) {
+            $book = Book::find($id);
+            if ($book) {
+                if ($book->r2_key) {
+                    $r2->delete($book->r2_key);
+                }
+                $book->delete();
+                $deleted++;
+            }
+        }
+
+        AuditLog::log('batch_delete', 'book', null, null, ['count' => $deleted]);
+
+        return $this->api->success(['deleted' => $deleted], "已删除{$deleted}本书籍");
+    }
+
+    /**
+     * 书籍去重
+     */
+    public function dedupBooks(): JsonResponse
+    {
+        $books = Book::whereNotNull('file_hash')->get();
+        $groups = [];
+
+        foreach ($books as $book) {
+            $groups[$book->file_hash][] = $book;
+        }
+
+        $removed = 0;
+        $r2 = app(R2StorageService::class);
+
+        foreach ($groups as $hash => $groupBooks) {
+            if (count($groupBooks) > 1) {
+                usort($groupBooks, fn($a, $b) => $b->file_size <=> $a->file_size);
+                array_shift($groupBooks); // 保留最大的
+
+                foreach ($groupBooks as $book) {
+                    if ($book->r2_key) {
+                        $r2->delete($book->r2_key);
+                    }
+                    $book->delete();
+                    $removed++;
+                }
+            }
+        }
+
+        AuditLog::log('dedup', 'book', null, null, ['removed' => $removed]);
+
+        return $this->api->success(['removed' => $removed], "已去除{$removed}本重复书籍");
+    }
+
+    /**
+     * 卡密列表
+     */
+    public function cards(Request $request): JsonResponse
+    {
+        $page = $request->get('page', 1);
+        $size = $request->get('size', 20);
+        $type = $request->get('type', '');
+
+        $query = Card::query();
+
+        if ($type) {
+            $query->where('type', $type);
+        }
+
+        $cards = $query->orderBy('created_at', 'desc')
+            ->paginate($size, ['*'], 'page', $page);
+
+        return $this->api->paginate($cards);
+    }
+
+    /**
+     * 创建卡密 - 统一4段4位大写字母格式
+     */
+    public function createCard(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'count'         => 'required|integer|min:1|max:100',
+            'type'          => 'required|string|in:register,renew',
+            'duration_days' => 'required|integer|min:1|max:3650',
+        ]);
+
+        $codes = [];
+        for ($i = 0; $i < $validated['count']; $i++) {
+            $code = $this->generateCardCode();
+            Card::create([
+                'code'          => $code,
+                'type'          => $validated['type'],
+                'duration_days' => $validated['duration_days'],
+            ]);
+            $codes[] = $code;
+        }
+
+        AuditLog::log('create_cards', 'card', null, null, [
+            'count' => count($codes),
+            'type'  => $validated['type'],
+        ]);
+
+        return $this->api->success([
+            'count' => count($codes),
+            'codes' => $codes,
+        ], '创建成功', 201);
+    }
+
+    private function generateCardCode(): string
+    {
+        $parts = [];
+        for ($i = 0; $i < 4; $i++) {
+            $parts[] = Str::upper(Str::random(4));
+        }
+        return implode('-', $parts);
+    }
+
+    /**
+     * 反馈列表
      */
     public function feedbacks(Request $request): JsonResponse
     {
         $page = $request->get('page', 1);
         $size = $request->get('size', 20);
+        $status = $request->get('status', '');
 
-        $feedbacks = Feedback::orderBy('created_at', 'desc')
+        $query = Feedback::query();
+
+        if ($status) {
+            $query->where('status', $status);
+        }
+
+        $feedbacks = $query->orderBy('created_at', 'desc')
             ->paginate($size, ['*'], 'page', $page);
 
-        return response()->json([
-            'err' => 'ok',
-            'data' => [
-                'total' => $feedbacks->total(),
-                'items' => $feedbacks->items(),
-                'page' => $feedbacks->currentPage(),
-                'size' => $feedbacks->perPage(),
-            ],
+        return $this->api->paginate($feedbacks);
+    }
+
+    /**
+     * 更新反馈状态
+     */
+    public function updateFeedback(Request $request, int $id): JsonResponse
+    {
+        $feedback = Feedback::find($id);
+
+        if (!$feedback) {
+            return $this->api->notFound('反馈不存在');
+        }
+
+        $validated = $request->validate([
+            'status' => 'required|string|in:pending,replied,resolved',
         ]);
+
+        $feedback->update(['status' => $validated['status']]);
+
+        return $this->api->success(null, '更新成功');
     }
 
     /**
@@ -202,12 +324,14 @@ class AdminController extends Controller
         $feedback = Feedback::find($id);
 
         if (!$feedback) {
-            return response()->json(['err' => 'not_found', 'msg' => '反馈不存在'], 404);
+            return $this->api->notFound('反馈不存在');
         }
 
         $feedback->delete();
 
-        return response()->json(['err' => 'ok']);
+        AuditLog::log('delete', 'feedback', $id);
+
+        return $this->api->success(null, '删除成功');
     }
 
     /**
@@ -215,9 +339,8 @@ class AdminController extends Controller
      */
     public function settings(): JsonResponse
     {
-        $settings = SystemSetting::all()->pluck('value', 'key')->toArray();
-
-        return response()->json(['err' => 'ok', 'data' => $settings]);
+        $settings = Setting::all()->pluck('value', 'key')->toArray();
+        return $this->api->success($settings);
     }
 
     /**
@@ -225,43 +348,35 @@ class AdminController extends Controller
      */
     public function saveSettings(Request $request): JsonResponse
     {
+        $oldSettings = Setting::all()->pluck('value', 'key')->toArray();
+
         foreach ($request->all() as $key => $value) {
-            SystemSetting::set($key, (string) $value);
+            Setting::set($key, (string) $value);
         }
 
-        return response()->json(['err' => 'ok']);
+        AuditLog::log('update', 'settings', null, $oldSettings, $request->all());
+
+        return $this->api->success(null, '保存成功');
     }
 
     /**
-     * 创建卡密
+     * 管理员二次验证密码
      */
-    public function createCard(Request $request): JsonResponse
+    public function verifyPassword(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'count' => 'required|integer|min:1|max:100',
-            'duration_days' => 'required|integer|min:1',
+            'password' => 'required|string',
         ]);
 
-        $cards = [];
-        $count = $validated['count'];
-        $durationDays = $validated['duration_days'];
+        $user = $request->user();
 
-        for ($i = 0; $i < $count; $i++) {
-            $code = strtoupper(substr(md5(uniqid()), 0, 16));
-            $card = Card::create([
-                'code' => $code,
-                'duration_days' => $durationDays,
-                'used' => false,
-            ]);
-            $cards[] = $card;
+        if (!\Illuminate\Support\Facades\Hash::check($validated['password'], $user->password)) {
+            return $this->api->error('密码错误', 4002);
         }
 
-        return response()->json([
-            'err' => 'ok',
-            'data' => [
-                'count' => count($cards),
-                'codes' => array_map(fn($c) => $c->code, $cards),
-            ],
-        ]);
+        // 生成临时验证token（5分钟有效）
+        $token = $user->createToken('admin_verify', ['admin_verify'], now()->addMinutes(5))->plainTextToken;
+
+        return $this->api->success(['verify_token' => $token], '验证通过');
     }
 }

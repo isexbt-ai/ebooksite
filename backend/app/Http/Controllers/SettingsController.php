@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\SystemSetting;
+use App\Models\Setting;
 use App\Models\Feedback;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -10,36 +10,21 @@ use Illuminate\Http\JsonResponse;
 class SettingsController extends Controller
 {
     /**
-     * 获取购买链接
+     * 获取公开设置
      */
-    public function buyLink(): JsonResponse
+    public function index(): JsonResponse
     {
-        $url = SystemSetting::get('buy_link', '');
-        $bookCountDisplay = SystemSetting::get('book_count_display', '');
+        $publicKeys = ['site_name', 'site_description', 'buy_link', 'book_count_display', 'download_limit'];
+        $settings = [];
 
-        return response()->json([
-            'err' => 'ok',
-            'data' => [
-                'url' => $url,
-                'book_count_display' => $bookCountDisplay,
-            ],
-        ]);
-    }
+        foreach ($publicKeys as $key) {
+            $value = Setting::get($key);
+            if ($value !== null) {
+                $settings[$key] = $value;
+            }
+        }
 
-    /**
-     * 保存购买链接
-     */
-    public function saveBuyLink(Request $request): JsonResponse
-    {
-        $validated = $request->validate([
-            'url' => 'nullable|string',
-            'book_count_display' => 'nullable|string',
-        ]);
-
-        SystemSetting::set('buy_link', $validated['url'] ?? '');
-        SystemSetting::set('book_count_display', $validated['book_count_display'] ?? '');
-
-        return response()->json(['err' => 'ok']);
+        return $this->api->success($settings);
     }
 
     /**
@@ -48,8 +33,8 @@ class SettingsController extends Controller
     public function feedback(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'content' => 'required|string',
-            'contact' => 'nullable|string',
+            'content' => 'required|string|max:2000',
+            'contact' => 'nullable|string|max:200',
         ]);
 
         $userId = $request->user() ? $request->user()->id : null;
@@ -60,6 +45,6 @@ class SettingsController extends Controller
             'contact' => $validated['contact'] ?? '',
         ]);
 
-        return response()->json(['err' => 'ok']);
+        return $this->api->success(null, '反馈提交成功', 201);
     }
 }

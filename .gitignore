@@ -6,3 +6,6 @@ data/
 .env
 backend/public/index.html
 backend/public/assets/
+backend_old_*/
+frontend_old_*/
+frontend/tsconfig.tsbuildinfo

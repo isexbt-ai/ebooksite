@@ -1,26 +1,13 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-
-interface User {
-  id: number
-  username: string
-  name: string
-  email: string
-  avatar: string
-  admin: boolean
-  active: boolean
-  expiry_date: string | null
-}
+import type { User } from '@/api/types'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null)
   const token = ref('')
 
   const isLoggedIn = computed(() => !!user.value && !!token.value)
-  const isAdmin = computed(() => {
-    if (user.value?.admin) return true
-    return !!localStorage.getItem('admin_token')
-  })
+  const isAdmin = computed(() => !!user.value?.admin)
   const isExpired = computed(() => {
     if (!user.value?.expiry_date) return false
     return new Date(user.value.expiry_date) < new Date()
@@ -38,51 +25,37 @@ export const useAuthStore = defineStore('auth', () => {
 
   const loadFromStorage = () => {
     const stored = localStorage.getItem('token')
-    if (stored) {
-      token.value = stored
-    }
+    if (stored) token.value = stored
     const userData = localStorage.getItem('user')
     if (userData) {
-      try {
-        user.value = JSON.parse(userData)
-      } catch (e) {
-        console.error('解析用户信息失败:', e)
-      }
+      try { user.value = JSON.parse(userData) } catch { /* ignore */ }
     }
   }
 
-  const logout = () => {
+  const clearAuth = () => {
     user.value = null
     token.value = ''
     localStorage.removeItem('token')
-    localStorage.removeItem('admin_token')
     localStorage.removeItem('user')
+  }
+
+  const logout = async () => {
+    try {
+      const { api } = await import('@/api/client')
+      await api.post('/auth/logout')
+    } catch { /* ignore */ }
+    clearAuth()
   }
 
   const fetchUser = async () => {
     try {
-      const { get } = await import('@/composables/useApi')
-      const { useApi } = await import('@/composables/useApi')
-      const api = useApi()
-      const data = await api.get('/user')
-      if (data.data) {
-        setUser(data.data)
-      }
-    } catch (error) {
-      console.error('获取用户信息失败:', error)
+      const { api } = await import('@/api/client')
+      const res = await api.get<User>('/auth/me')
+      if (res.data) setUser(res.data)
+    } catch {
+      clearAuth()
     }
   }
 
-  return {
-    user,
-    token,
-    isLoggedIn,
-    isAdmin,
-    isExpired,
-    setUser,
-    setToken,
-    loadFromStorage,
-    logout,
-    fetchUser,
-  }
+  return { user, token, isLoggedIn, isAdmin, isExpired, setUser, setToken, loadFromStorage, clearAuth, logout, fetchUser }
 })

@@ -1,506 +1,80 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useApi } from '@/composables/useApi'
+import { api } from '@/api/client'
+import type { Book, PaginatedData } from '@/api/types'
+import { formatSize } from '@/utils/format'
+import { NInput, NButton, NGrid, NGi, NCard, NTag, NSpace, NPagination, NSpin, NEmpty } from 'naive-ui'
 
 const route = useRoute()
 const router = useRouter()
-const query = ref('')
-const results = ref<any[]>([])
-const loading = ref(false)
-const searched = ref(false)
-const page = ref(1)
+const query = ref((route.query.q as string) || '')
+const books = ref<Book[]>([])
 const total = ref(0)
-const pageSize = ref(20)
-const downloading = ref<number | null>(null)
+const page = ref(1)
+const size = ref(20)
+const loading = ref(false)
 
-const doSearch = async () => {
+const search = async () => {
   if (!query.value.trim()) return
   loading.value = true
-  searched.value = true
   try {
-    const api = useApi()
-    const data = await api.get(`/books/search?q=${encodeURIComponent(query.value)}&page=${page.value}&size=${pageSize.value}`)
-    results.value = data.data?.items || []
-    total.value = data.data?.total || 0
-  } catch (e) {
-    results.value = []
-  } finally {
-    loading.value = false
-  }
+    const res = await api.get<PaginatedData<Book>>(`/books?search=${encodeURIComponent(query.value.trim())}&page=${page.value}&size=${size.value}`)
+    books.value = res.data?.items || []
+    total.value = res.data?.total || 0
+  } catch { /* ignore */ }
+  loading.value = false
 }
 
-const changePage = (p: number) => {
-  page.value = p
-  doSearch()
-}
-
-const formatSize = (bytes: number) => {
-  if (!bytes) return '0 B'
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-}
-
-const downloadBook = async (book: any) => {
-  downloading.value = book.id
-  try {
-    const api = useApi()
-    const data = await api.get(`/books/download/${book.id}`)
-    const downloadUrl = data.data?.download_url
-
-    if (!downloadUrl) {
-      alert('获取下载链接失败')
-      return
-    }
-
-    const a = document.createElement('a')
-    a.href = downloadUrl
-    a.download = ''
-    a.target = '_blank'
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-  } catch (e: any) {
-    alert('下载失败: ' + (e.message || '未知错误'))
-  } finally {
-    downloading.value = null
-  }
-}
-
-const goToDetail = (bookId: number) => {
-  router.push(`/books/${bookId}`)
-}
-
-onMounted(() => {
-  const q = route.query.query as string
-  if (q) {
-    query.value = q
-    doSearch()
-  }
-})
+onMounted(() => { if (query.value) search() })
+watch(() => route.query.q, (v) => { if (v) { query.value = v as string; search() } })
+const handleSearch = () => { page.value = 1; router.replace(`/search?q=${encodeURIComponent(query.value.trim())}`) }
+const handlePageChange = (p: number) => { page.value = p; search() }
 </script>
 
 <template>
-  <div class="search-page">
-    <div class="search-container">
-      <!-- 头部 -->
-      <div class="search-header">
-        <h1>🔍 搜索书籍</h1>
-        <p class="subtitle">发现你想要的书籍</p>
-      </div>
+  <div style="max-width: 1200px; margin: 0 auto; padding: 40px 20px;">
+    <!-- 搜索框 -->
+    <div style="text-align: center; margin-bottom: 36px;">
+      <n-input
+        v-model:value="query"
+        placeholder="搜索书名或作者..."
+        size="large"
+        style="max-width: 600px; width: 100%;"
+        @keyup.enter="handleSearch"
+      >
+        <template #suffix>
+          <n-button type="primary" @click="handleSearch">搜索</n-button>
+        </template>
+      </n-input>
+    </div>
 
-      <!-- 搜索框 -->
-      <div class="search-box">
-        <div class="search-input-wrapper">
-          <span class="search-icon">🔍</span>
-          <input
-            v-model="query"
-            placeholder="输入书名或作者..."
-            @keyup.enter="doSearch"
-          />
-          <button :disabled="loading" @click="doSearch">
-            {{ loading ? '搜索中...' : '搜索' }}
-          </button>
-        </div>
-      </div>
-
-      <!-- 加载中 -->
-      <div v-if="loading" class="loading-state">
-        <div class="loading-spinner"></div>
-        <p>正在搜索...</p>
-      </div>
-
-      <!-- 无结果 -->
-      <div v-else-if="searched && results.length === 0" class="empty-state">
-        <span class="empty-icon">📚</span>
-        <p>未找到相关书籍</p>
-        <p class="empty-hint">试试其他关键词</p>
-      </div>
-
-      <!-- 结果列表 -->
-      <div v-else-if="results.length > 0" class="results-section">
-        <div class="results-header">
-          <p class="total">共找到 <span>{{ total }}</span> 本相关书籍</p>
-        </div>
-
-        <div class="results">
-          <div
-            v-for="book in results"
-            :key="book.id"
-            class="book-card"
-            @click="goToDetail(book.id)"
+    <n-spin :show="loading">
+      <n-grid :cols="4" :x-gap="16" :y-gap="16" responsive="screen" item-responsive>
+        <n-gi v-for="book in books" :key="book.id" span="4 m:2 l:1">
+          <n-card
+            hoverable
+            class="glass-card"
+            style="cursor: pointer; background: var(--glass-bg); backdrop-filter: blur(20px); border: 1px solid var(--glass-border); border-radius: 16px;"
+            @click="router.push(`/books/${book.id}`)"
           >
-            <div class="book-cover">
-              <span class="cover-icon">📖</span>
-            </div>
-            <div class="book-info">
-              <h3>{{ book.title }}</h3>
-              <p class="author">{{ book.author || '未知作者' }}</p>
-              <div class="book-meta">
-                <span class="format">{{ book.file_format?.toUpperCase() }}</span>
-                <span class="divider">·</span>
-                <span class="size">{{ formatSize(book.file_size) }}</span>
-              </div>
-            </div>
-            <button
-              class="download-btn"
-              :disabled="downloading === book.id"
-              @click.stop="downloadBook(book)"
-            >
-              <span v-if="downloading === book.id" class="btn-spinner"></span>
-              {{ downloading === book.id ? '获取中...' : '下载' }}
-            </button>
-          </div>
-        </div>
-
-        <!-- 分页 -->
-        <div class="pagination">
-          <button
-            :disabled="page <= 1"
-            class="page-btn"
-            @click="changePage(page - 1)"
-          >
-            ← 上一页
-          </button>
-          <span class="page-info">第 {{ page }} 页</span>
-          <button
-            :disabled="results.length < pageSize"
-            class="page-btn"
-            @click="changePage(page + 1)"
-          >
-            下一页 →
-          </button>
-        </div>
+            <h3 style="color: var(--text-primary); margin: 0 0 8px; font-size: 16px; font-weight: 600;">{{ book.title }}</h3>
+            <p style="color: var(--text-secondary); font-size: 14px; margin: 0 0 12px;">{{ book.author || '未知作者' }}</p>
+            <n-space>
+              <n-tag v-if="book.category" size="small" type="info">{{ book.category }}</n-tag>
+              <n-tag size="small">{{ book.file_format?.toUpperCase() || '未知' }}</n-tag>
+              <n-tag size="small" type="success">{{ formatSize(book.file_size) }}</n-tag>
+            </n-space>
+          </n-card>
+        </n-gi>
+      </n-grid>
+      <div v-if="!loading && books.length === 0 && query" style="text-align: center; padding: 60px 20px;">
+        <n-empty description="未找到相关书籍" />
       </div>
+    </n-spin>
+
+    <div v-if="total > size" style="display: flex; justify-content: center; margin-top: 30px;">
+      <n-pagination :page="page" :page-count="Math.ceil(total / size)" @update:page="handlePageChange" />
     </div>
   </div>
 </template>
-
-<style scoped>
-.search-page {
-  min-height: 100vh;
-  padding: 20px;
-  background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
-}
-
-.search-container {
-  max-width: 800px;
-  margin: 0 auto;
-  animation: fadeIn 0.6s ease-out;
-}
-
-/* 头部 */
-.search-header {
-  text-align: center;
-  margin-bottom: 32px;
-  padding-top: 40px;
-}
-
-.search-header h1 {
-  font-size: 28px;
-  font-weight: 700;
-  color: #1e293b;
-  margin: 0 0 8px;
-}
-
-.subtitle {
-  color: #64748b;
-  font-size: 14px;
-  margin: 0;
-}
-
-/* 搜索框 */
-.search-box {
-  margin-bottom: 32px;
-}
-
-.search-input-wrapper {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  padding: 4px 4px 4px 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  transition: all 0.3s ease;
-}
-
-.search-input-wrapper:hover {
-  border-color: #cbd5e1;
-}
-
-.search-input-wrapper:focus-within {
-  border-color: #6366f1;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
-}
-
-.search-icon {
-  font-size: 20px;
-  color: #94a3b8;
-  flex-shrink: 0;
-}
-
-.search-input-wrapper input {
-  flex: 1;
-  border: none;
-  outline: none;
-  font-size: 15px;
-  color: #1e293b;
-  padding: 12px 8px;
-  background: transparent;
-  font-family: inherit;
-}
-
-.search-input-wrapper input::placeholder {
-  color: #94a3b8;
-}
-
-.search-input-wrapper button {
-  padding: 12px 24px;
-  background: linear-gradient(135deg, #6366f1, #4f46e5);
-  border: none;
-  color: white;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  flex-shrink: 0;
-}
-
-.search-input-wrapper button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(99, 102, 241, 0.3);
-}
-
-.search-input-wrapper button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  transform: none;
-}
-
-/* 加载状态 */
-.loading-state {
-  text-align: center;
-  padding: 60px 20px;
-  color: #64748b;
-}
-
-.loading-spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid #e2e8f0;
-  border-top-color: #6366f1;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  margin: 0 auto 16px;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-/* 空状态 */
-.empty-state {
-  text-align: center;
-  padding: 60px 20px;
-  color: #64748b;
-}
-
-.empty-icon {
-  font-size: 48px;
-  display: block;
-  margin-bottom: 16px;
-}
-
-.empty-state p {
-  font-size: 16px;
-  margin: 0 0 8px;
-}
-
-.empty-hint {
-  font-size: 13px;
-  color: #94a3b8;
-}
-
-/* 结果区域 */
-.results-section {
-  animation: fadeIn 0.4s ease-out;
-}
-
-.results-header {
-  margin-bottom: 16px;
-}
-
-.total {
-  color: #64748b;
-  font-size: 14px;
-  margin: 0;
-}
-
-.total span {
-  color: #6366f1;
-  font-weight: 600;
-}
-
-/* 书籍卡片 */
-.results {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.book-card {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  padding: 16px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-}
-
-.book-card:hover {
-  border-color: #cbd5e1;
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
-}
-
-.book-cover {
-  width: 56px;
-  height: 72px;
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  border: 1px solid rgba(99, 102, 241, 0.2);
-}
-
-.cover-icon {
-  font-size: 24px;
-}
-
-.book-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.book-info h3 {
-  margin: 0 0 4px;
-  color: #1e293b;
-  font-size: 15px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.book-info .author {
-  margin: 0 0 6px;
-  color: #64748b;
-  font-size: 13px;
-}
-
-.book-meta {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.book-meta .format {
-  padding: 2px 8px;
-  background: rgba(99, 102, 241, 0.1);
-  font-size: 11px;
-  color: #6366f1;
-  font-weight: 500;
-}
-
-.book-meta .divider {
-  color: #94a3b8;
-  font-size: 11px;
-}
-
-.book-meta .size {
-  color: #64748b;
-  font-size: 11px;
-}
-
-.download-btn {
-  padding: 8px 16px;
-  background: linear-gradient(135deg, #10b981, #059669);
-  border: none;
-  color: white;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.download-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
-}
-
-.download-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.btn-spinner {
-  width: 14px;
-  height: 14px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top-color: white;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-/* 分页 */
-.pagination {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 16px;
-  margin-top: 32px;
-  padding: 16px;
-}
-
-.page-btn {
-  padding: 8px 16px;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  color: #1e293b;
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-}
-
-.page-btn:hover:not(:disabled) {
-  border-color: #cbd5e1;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.page-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.page-info {
-  color: #64748b;
-  font-size: 14px;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-</style>

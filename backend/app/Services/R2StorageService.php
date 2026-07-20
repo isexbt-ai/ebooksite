@@ -61,21 +61,7 @@ class R2StorageService
             $this->client->putObject($params);
             return $this->getPublicUrl($key);
         } catch (AwsException $e) {
-            Log::error('R2 upload failed: ' . $e->getMessage());
-            return null;
-        }
-    }
-
-    public function get(string $key): ?string
-    {
-        try {
-            $result = $this->client->getObject([
-                'Bucket' => $this->bucket,
-                'Key'    => $key,
-            ]);
-            return (string) $result['Body'];
-        } catch (AwsException $e) {
-            Log::error('R2 get failed: ' . $e->getMessage());
+            Log::error('R2 upload content failed: ' . $e->getMessage());
             return null;
         }
     }
@@ -203,25 +189,6 @@ class R2StorageService
         } catch (AwsException $e) {
             Log::error('R2 abort multipart upload failed: ' . $e->getMessage());
             return false;
-        }
-    }
-
-    public function getObjectInfo(string $key): ?array
-    {
-        try {
-            $result = $this->client->headObject([
-                'Bucket' => $this->bucket,
-                'Key'    => $key,
-            ]);
-            return [
-                'size'         => $result['ContentLength'] ?? 0,
-                'content_type' => $result['ContentType'] ?? 'application/octet-stream',
-                'last_modified'=> $result['LastModified'] ?? null,
-                'etag'         => $result['ETag'] ?? null,
-            ];
-        } catch (AwsException $e) {
-            Log::error('R2 get object info failed: ' . $e->getMessage());
-            return null;
         }
     }
 

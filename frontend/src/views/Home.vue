@@ -2,109 +2,138 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { useApi } from '@/composables/useApi'
+import { api } from '@/api/client'
+import type { Book, Settings } from '@/api/types'
+import { formatSize } from '@/utils/format'
+import { NButton, NInput, NCard, NSpace, NGrid, NGi, NTag, NStatistic, NSkeleton } from 'naive-ui'
 
 const router = useRouter()
 const authStore = useAuthStore()
-
 const searchQuery = ref('')
-const loading = ref(false)
-const buyLink = ref('')
-const totalBooksDisplay = ref('')
+const hotBooks = ref<Book[]>([])
+const settings = ref<Settings>({})
+const loading = ref(true)
 
-const doSearch = () => {
-  if (!searchQuery.value.trim()) return
-  router.push(`/search?query=${encodeURIComponent(searchQuery.value)}`)
-}
-
-const fetchBuyLink = async () => {
-const goToSettings = () => { if (authStore.isLoggedIn) { router.push('/settings') } else { router.push('/login') } }
+onMounted(async () => {
   try {
-    const api = useApi()
-    const data = await api.get('/settings/buy_link')
-    if (data.data && data.data.url) {
-      buyLink.value = data.data.url
-    }
-    if (data.data && data.data.book_count_display) {
-      totalBooksDisplay.value = data.data.book_count_display
-    }
-  } catch (e) {
-    // 忽略
-  }
-}
-
-const openBuyLink = () => {
-  if (buyLink.value) {
-    window.open(buyLink.value, '_blank')
-  }
-}
-
-onMounted(() => {
-  authStore.fetchUser()
-  fetchBuyLink()
+    const [hotRes, settingsRes] = await Promise.all([
+      api.get<{items: Book[]}>('/books/hot?limit=8'),
+      api.get<Settings>('/settings'),
+    ])
+    hotBooks.value = hotRes.data?.items || []
+    settings.value = settingsRes.data || {}
+  } catch { /* ignore */ }
+  loading.value = false
 })
+
+const handleSearch = () => {
+  if (searchQuery.value.trim()) {
+    router.push(`/search?q=${encodeURIComponent(searchQuery.value.trim())}`)
+  }
+}
+
+const handleBuyCard = () => {
+  if (settings.value.buy_link) {
+    window.open(settings.value.buy_link, '_blank')
+  }
+}
 </script>
 
 <template>
   <div class="home-page">
-    <!-- 顶部搜索区 -->
-    <div class="search-header">
-      <div class="search-title">
-        <span class="logo-icon">📚</span>
-        <span class="title-text">搜书机器人</span>
+    <!-- 毛玻璃导航栏 -->
+    <nav class="glass-nav" style="position: fixed; top: 0; left: 0; right: 0; z-index: 100; padding: 0 24px; height: 64px; display: flex; align-items: center; justify-content: space-between;">
+      <div style="display: flex; align-items: center; gap: 12px; cursor: pointer;" @click="router.push('/')">
+        <span style="font-size: 24px;">📚</span>
+        <span style="font-size: 18px; font-weight: 700; color: var(--text-primary);">{{ settings.site_name || '搜书机器人' }}</span>
       </div>
-      <p class="search-subtitle">全网搜索，极速响应</p>
-      <p v-if="totalBooksDisplay" class="book-count">{{ totalBooksDisplay }}</p>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <n-input
+          v-model:value="searchQuery"
+          placeholder="搜索书名或作者..."
+          size="small"
+          style="width: 240px;"
+          @keyup.enter="handleSearch"
+        >
+          <template #suffix>
+            <n-button size="small" type="primary" @click="handleSearch">搜索</n-button>
+          </template>
+        </n-input>
+        <template v-if="!authStore.isLoggedIn">
+          <n-button size="small" type="primary" @click="router.push('/login')">登录</n-button>
+          <n-button size="small" @click="router.push('/register')">注册</n-button>
+        </template>
+        <template v-else>
+          <span style="font-size: 13px; color: var(--text-secondary); margin: 0 4px;">
+            {{ authStore.user?.username }}
+            <template v-if="authStore.user?.expiry_date"> · 到期 {{ authStore.user.expiry_date }}</template>
+          </span>
+          <n-button v-if="authStore.isAdmin" size="small" type="warning" @click="router.push('/admin')">管理后台</n-button>
+          <n-button v-if="!authStore.isAdmin" size="small" @click="router.push('/settings')">个人设置</n-button>
+          <n-button size="small" @click="authStore.logout().then(() => router.push('/'))">退出</n-button>
+        </template>
+      </div>
+    </nav>
+
+    <!-- Hero 区域 -->
+    <div class="hero-section">
+      <div style="text-align: center; position: relative; z-index: 1;">
+        <h1 style="font-size: 52px; color: #fff; margin: 0 0 16px; font-weight: 800; text-shadow: 0 2px 8px rgba(0,0,0,0.15);">
+          📚 {{ settings.site_name || '搜书机器人' }}
+        </h1>
+        <p style="font-size: 20px; color: rgba(255,255,255,0.9); margin: 0 0 36px; text-shadow: 0 1px 4px rgba(0,0,0,0.1);">
+          {{ settings.site_description || '电子书搜索与下载平台' }}
+        </p>
+        <n-input
+          v-model:value="searchQuery"
+          placeholder="搜索书名或作者..."
+          size="large"
+          style="max-width: 560px; margin: 0 auto;"
+          @keyup.enter="handleSearch"
+        >
+          <template #suffix>
+            <n-button type="primary" size="large" @click="handleSearch">搜索</n-button>
+          </template>
+        </n-input>
+      </div>
     </div>
 
-    <!-- 搜索框 -->
-    <div class="search-box">
-      <div class="search-input-wrapper">
-        <span class="search-icon">🔍</span>
-        <input
-          v-model="searchQuery"
-          type="text"
-          placeholder="输入书名或作者..."
-          @keyup.enter="doSearch"
-        />
-        <button :disabled="loading" @click="doSearch">
-          <span>→</span>
-        </button>
+    <!-- 热门书籍 -->
+    <div style="max-width: 1200px; margin: 0 auto; padding: 0 20px 40px;">
+      <div v-if="!loading && hotBooks.length > 0">
+        <h2 style="color: var(--text-primary); margin-bottom: 24px; font-size: 24px; font-weight: 700;">🔥 热门书籍</h2>
+        <n-grid :cols="4" :x-gap="16" :y-gap="16" responsive="screen" item-responsive>
+          <n-gi v-for="book in hotBooks" :key="book.id" span="4 m:2 l:1">
+            <n-card
+              hoverable
+              class="glass-card"
+              style="cursor: pointer; background: var(--glass-bg); backdrop-filter: blur(20px); border: 1px solid var(--glass-border); border-radius: 16px;"
+              @click="router.push(`/books/${book.id}`)"
+            >
+              <h3 style="color: var(--text-primary); margin: 0 0 8px; font-size: 16px; font-weight: 600;">{{ book.title }}</h3>
+              <p style="color: var(--text-secondary); font-size: 14px; margin: 0 0 12px;">{{ book.author || '未知作者' }}</p>
+              <n-space>
+                <n-tag v-if="book.category" size="small" type="info">{{ book.category }}</n-tag>
+                <n-tag size="small">{{ book.file_format?.toUpperCase() || '未知' }}</n-tag>
+                <n-tag size="small" type="success">{{ formatSize(book.file_size) }}</n-tag>
+              </n-space>
+            </n-card>
+          </n-gi>
+        </n-grid>
       </div>
-    </div>
 
-    <!-- 功能卡片 -->
-    <div class="feature-cards">
-      <div class="feature-card" @click="openBuyLink">
-        <div class="feature-icon">🎫</div>
-        <span class="feature-text">卡密购买</span>
+      <div v-if="loading" style="text-align: center; padding: 40px;">
+        <n-skeleton text :repeat="3" />
       </div>
-      <div class="feature-card" @click="router.push('/feedback')">
-        <div class="feature-icon">📩</div>
-        <span class="feature-text">需求提交</span>
-      </div>
-    </div>
 
-    <!-- 宣传横幅 -->
-    <div class="promo-banner">
-      <div class="promo-content">
-        <span class="promo-icon">📖</span>
-        <div class="promo-text">
-          <h3>海量书籍</h3>
-          <p>极速搜索，即刻下载</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- 底部导航 -->
-    <div class="bottom-nav">
-      <div class="nav-item active">
-        <span class="nav-icon">🏠</span>
-        <span class="nav-text active">首页</span>
-      </div>
-      <div class="nav-item" @click="goToSettings">
-        <span class="nav-icon">👤</span>
-        <span class="nav-text">我的</span>
+      <!-- 快捷操作区 -->
+      <div style="text-align: center; margin-top: 60px; display: flex; justify-content: center; gap: 16px; flex-wrap: wrap;">
+        <n-button size="large" @click="router.push('/feedback')">
+          💬 意见反馈
+        </n-button>
+        <n-button size="large" type="primary" @click="handleBuyCard">
+          🛒 购买卡密
+        </n-button>
       </div>
     </div>
   </div>
@@ -112,245 +141,30 @@ onMounted(() => {
 
 <style scoped>
 .home-page {
-  min-height: 100vh;
+  padding-top: 64px;
+}
+
+.hero-section {
+  background: var(--gradient-hero);
+  padding: 80px 20px 60px;
+  margin-bottom: 40px;
   position: relative;
   overflow: hidden;
-  padding-bottom: 80px;
-  background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
 }
 
-/* 搜索头部 */
-.search-header {
-  padding: 60px 20px 40px;
-  text-align: center;
+.hero-section::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%);
+  animation: heroGlow 8s ease-in-out infinite alternate;
 }
 
-.search-title {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-
-.logo-icon {
-  font-size: 32px;
-}
-
-.title-text {
-  font-size: 28px;
-  font-weight: 700;
-  color: #1e293b;
-}
-
-.search-subtitle {
-  font-size: 14px;
-  color: #64748b;
-  margin: 0;
-}
-
-.book-count {
-  font-size: 13px;
-  color: #94a3b8;
-  margin: 8px 0 0;
-}
-
-/* 搜索框 */
-.search-box {
-  padding: 0 20px;
-  margin-bottom: 32px;
-}
-
-.search-input-wrapper {
-  display: flex;
-  align-items: center;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  padding: 4px 4px 4px 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  transition: all 0.3s ease;
-}
-
-.search-input-wrapper:hover {
-  border-color: #cbd5e1;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-}
-
-.search-input-wrapper:focus-within {
-  border-color: #6366f1;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
-}
-
-.search-icon {
-  font-size: 20px;
-  color: #94a3b8;
-  flex-shrink: 0;
-  margin-right: 8px;
-}
-
-.search-input-wrapper input {
-  flex: 1;
-  border: none;
-  outline: none;
-  font-size: 15px;
-  color: #1e293b;
-  padding: 12px 8px;
-  background: transparent;
-}
-
-.search-input-wrapper input::placeholder {
-  color: #94a3b8;
-}
-
-.search-input-wrapper button {
-  width: 44px;
-  height: 44px;
-  background: linear-gradient(135deg, #6366f1, #4f46e5);
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: all 0.3s ease;
-  color: white;
-  font-size: 18px;
-}
-
-.search-input-wrapper button:hover {
-  transform: scale(1.05);
-  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
-}
-
-.search-input-wrapper button:active {
-  transform: scale(0.95);
-}
-
-/* 功能卡片 */
-.feature-cards {
-  display: flex;
-  gap: 16px;
-  padding: 0 20px;
-  margin-bottom: 32px;
-}
-
-.feature-card {
-  flex: 1;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  padding: 24px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-}
-
-.feature-card:hover {
-  border-color: #cbd5e1;
-  transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
-}
-
-.feature-icon {
-  width: 56px;
-  height: 56px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 28px;
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
-  border: 1px solid rgba(99, 102, 241, 0.2);
-}
-
-.feature-text {
-  font-size: 14px;
-  font-weight: 600;
-  color: #1e293b;
-}
-
-/* 宣传横幅 */
-.promo-banner {
-  margin: 0 20px 32px;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  padding: 24px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  transition: all 0.3s ease;
-}
-
-.promo-banner:hover {
-  border-color: #cbd5e1;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
-}
-
-.promo-content {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.promo-icon {
-  font-size: 40px;
-  flex-shrink: 0;
-}
-
-.promo-text h3 {
-  font-size: 18px;
-  font-weight: 700;
-  color: #1e293b;
-  margin: 0 0 4px;
-}
-
-.promo-text p {
-  font-size: 13px;
-  color: #64748b;
-  margin: 0;
-}
-
-/* 底部导航 */
-.bottom-nav {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 64px;
-  background: #ffffff;
-  border-top: 1px solid #e2e8f0;
-  display: flex;
-  justify-content: space-around;
-  align-items: center;
-  z-index: 100;
-  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.06);
-}
-
-.nav-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  cursor: pointer;
-  padding: 8px 24px;
-  transition: all 0.3s ease;
-}
-
-.nav-item:hover {
-  transform: translateY(-2px);
-}
-
-.nav-icon {
-  font-size: 20px;
-}
-
-.nav-text {
-  font-size: 12px;
-  color: #64748b;
-  font-weight: 500;
-}
-
-.nav-text.active {
-  color: #6366f1;
+@keyframes heroGlow {
+  0% { transform: translate(0, 0); }
+  100% { transform: translate(30px, -20px); }
 }
 </style>

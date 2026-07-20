@@ -9,12 +9,18 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Feedback extends Model
 {
     use HasFactory;
+
     protected $table = 'feedbacks';
 
     protected $fillable = [
         'user_id',
         'content',
         'contact',
+        'status',
+    ];
+
+    protected $casts = [
+        'status' => 'string',
     ];
 
     public function user(): BelongsTo
