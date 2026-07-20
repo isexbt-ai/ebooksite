@@ -65,6 +65,8 @@ body {
   background: var(--color-bg);
   min-height: 100vh;
   color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 #app {
@@ -120,4 +122,19 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.25); }
+
+/* 移动端全局适配 */
+@media (max-width: 768px) {
+  .glass-card:hover {
+    transform: none;
+    box-shadow: var(--glass-shadow);
+  }
+}
+
+/* 安全区域适配（刘海屏等） */
+@supports (padding: env(safe-area-inset-bottom)) {
+  body {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
 </style>

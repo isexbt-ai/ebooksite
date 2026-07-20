@@ -23,13 +23,13 @@ const submit = async () => {
 </script>
 
 <template>
-  <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+  <div class="feedback-page">
     <n-button text type="primary" @click="router.push('/')" style="margin-bottom: 20px; font-size: 15px;">← 返回首页</n-button>
 
     <n-card
       title="💬 意见反馈"
       :bordered="false"
-      style="background: var(--glass-bg); backdrop-filter: blur(20px); border: 1px solid var(--glass-border); border-radius: 16px; box-shadow: var(--glass-shadow);"
+      class="glass-card"
     >
       <n-form>
         <n-form-item label="反馈内容">
@@ -43,3 +43,17 @@ const submit = async () => {
     </n-card>
   </div>
 </template>
+
+<style scoped>
+.feedback-page {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 40px 20px;
+}
+
+@media (max-width: 768px) {
+  .feedback-page {
+    padding: 20px 12px;
+  }
+}
+</style>

@@ -40,10 +40,10 @@ const handleRegister = async () => {
 <template>
   <div class="register-page">
     <div class="register-bg"></div>
-    <div style="position: relative; z-index: 1; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px;">
+    <div class="register-container">
       <n-card
         title="注册"
-        style="width: 420px; max-width: 100%; background: var(--glass-bg); backdrop-filter: blur(20px); border: 1px solid var(--glass-border); border-radius: 16px; box-shadow: var(--glass-shadow);"
+        class="register-card glass-card"
         :bordered="false"
       >
         <n-form>
@@ -86,5 +86,32 @@ const handleRegister = async () => {
   bottom: 0;
   background: var(--gradient-hero);
   z-index: 0;
+}
+
+.register-container {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.register-card {
+  width: 420px;
+  max-width: 100%;
+}
+
+@media (max-width: 480px) {
+  .register-container {
+    padding: 16px;
+    align-items: flex-start;
+    padding-top: 40px;
+  }
+
+  .register-card {
+    width: 100%;
+  }
 }
 </style>

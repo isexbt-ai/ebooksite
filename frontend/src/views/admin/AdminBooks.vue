@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, h } from 'vue'
+import { ref, onMounted, h, computed } from 'vue'
 import { api } from '@/api/client'
 import type { Book, PaginatedData } from '@/api/types'
 import { formatSize, formatDateTime } from '@/utils/format'
@@ -14,6 +14,10 @@ const total = ref(0)
 const page = ref(1)
 const search = ref('')
 const loading = ref(false)
+const isMobile = ref(false)
+
+const checkMobile = () => { isMobile.value = window.innerWidth <= 768 }
+onMounted(() => { checkMobile(); window.addEventListener('resize', checkMobile) })
 
 const fetchBooks = async () => {
   loading.value = true
@@ -56,17 +60,106 @@ const columns: DataTableColumns<Book> = [
 
 <template>
   <div>
-    <h2 style="color: var(--text-primary); margin-bottom: 20px; font-weight: 700;">书籍管理</h2>
-    <n-space style="margin-bottom: 16px;">
-      <n-input v-model:value="search" placeholder="搜索书名或作者" style="width: 300px;" @keyup.enter="fetchBooks" />
+    <h2 class="page-title">书籍管理</h2>
+    <n-space class="search-bar" :vertical="isMobile">
+      <n-input v-model:value="search" placeholder="搜索书名或作者" :style="{ width: isMobile ? '100%' : '300px' }" @keyup.enter="fetchBooks" />
       <n-button type="primary" @click="fetchBooks">搜索</n-button>
       <n-button @click="handleDedup">去重</n-button>
     </n-space>
-    <n-card style="background: var(--glass-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid var(--glass-border); border-radius: 16px; box-shadow: var(--glass-shadow);">
+
+    <!-- 桌面端表格 -->
+    <n-card v-if="!isMobile" class="glass-card">
       <n-data-table :columns="columns" :data="books" :loading="loading" :bordered="false" />
-      <div style="display: flex; justify-content: center; margin-top: 16px;">
+      <div class="pagination-wrap">
         <n-pagination v-if="total > 20" :page="page" :page-count="Math.ceil(total / 20)" @update:page="p => { page = p; fetchBooks() }" />
       </div>
     </n-card>
+
+    <!-- 移动端卡片列表 -->
+    <div v-if="isMobile" class="mobile-list">
+      <n-card v-for="book in books" :key="book.id" class="glass-card mobile-list-item">
+        <div class="mobile-list-header">
+          <span class="mobile-list-title">{{ book.title }}</span>
+          <n-tag size="small">{{ book.file_format?.toUpperCase() || '-' }}</n-tag>
+        </div>
+        <div class="mobile-list-meta">
+          <span>{{ book.author || '未知' }}</span>
+          <span>{{ formatSize(book.file_size) }}</span>
+          <span>{{ book.upload_status }}</span>
+        </div>
+        <div class="mobile-list-footer">
+          <span class="mobile-list-time">{{ formatDateTime(book.created_at) }}</span>
+          <n-button size="small" type="error" @click="deleteBook(book)">删除</n-button>
+        </div>
+      </n-card>
+      <div class="pagination-wrap">
+        <n-pagination v-if="total > 20" :page="page" :page-count="Math.ceil(total / 20)" @update:page="p => { page = p; fetchBooks() }" />
+      </div>
+    </div>
   </div>
 </template>
+
+<style scoped>
+.page-title {
+  color: var(--text-primary);
+  margin-bottom: 20px;
+  font-weight: 700;
+}
+
+.search-bar {
+  margin-bottom: 16px;
+}
+
+.pagination-wrap {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.mobile-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mobile-list-item {
+  margin-bottom: 0;
+}
+
+.mobile-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.mobile-list-title {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  margin-right: 8px;
+}
+
+.mobile-list-meta {
+  display: flex;
+  gap: 12px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.mobile-list-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.mobile-list-time {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+</style>

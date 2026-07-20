@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { api } from '@/api/client'
 import type { LoginData } from '@/api/types'
@@ -8,6 +8,7 @@ import { useMessage } from 'naive-ui'
 import { NCard, NForm, NFormItem, NInput, NButton, NSpace } from 'naive-ui'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 const message = useMessage()
 const form = ref({ username: '', password: '' })
@@ -33,7 +34,8 @@ const handleLogin = async () => {
       expiry_date: res.data.expiry_date,
     })
     message.success('登录成功')
-    router.push('/')
+    const redirect = (route.query.redirect as string) || '/'
+    router.push(redirect)
   } catch (e: any) {
     message.error(e.message || '登录失败')
   } finally {
@@ -45,10 +47,10 @@ const handleLogin = async () => {
 <template>
   <div class="login-page">
     <div class="login-bg"></div>
-    <div style="position: relative; z-index: 1; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px;">
+    <div class="login-container">
       <n-card
         title="登录"
-        style="width: 420px; max-width: 100%; background: var(--glass-bg); backdrop-filter: blur(20px); border: 1px solid var(--glass-border); border-radius: 16px; box-shadow: var(--glass-shadow);"
+        class="login-card glass-card"
         :bordered="false"
       >
         <n-form>
@@ -85,5 +87,32 @@ const handleLogin = async () => {
   bottom: 0;
   background: var(--gradient-hero);
   z-index: 0;
+}
+
+.login-container {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.login-card {
+  width: 420px;
+  max-width: 100%;
+}
+
+@media (max-width: 480px) {
+  .login-container {
+    padding: 16px;
+    align-items: flex-start;
+    padding-top: 60px;
+  }
+
+  .login-card {
+    width: 100%;
+  }
 }
 </style>

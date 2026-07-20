@@ -5,7 +5,7 @@ import { useAuthStore } from '@/stores/auth'
 import { api } from '@/api/client'
 import type { User, Download, Settings } from '@/api/types'
 import { useMessage } from 'naive-ui'
-import { NCard, NForm, NFormItem, NInput, NButton, NDescriptions, NDescriptionsItem, NSpace, NAvatar, NDivider, NGrid, NGi, NTag, NEmpty } from 'naive-ui'
+import { NCard, NForm, NFormItem, NInput, NButton, NDescriptions, NDescriptionsItem, NSpace, NAvatar, NTag, NEmpty } from 'naive-ui'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -74,22 +74,19 @@ const openBuyLink = () => {
 </script>
 
 <template>
-  <div style="max-width: 800px; margin: 0 auto; padding: 40px 20px;">
+  <div class="settings-page">
     <n-button text type="primary" @click="router.push('/')" style="margin-bottom: 20px; font-size: 15px;">← 返回首页</n-button>
 
     <!-- 用户信息卡片 -->
-    <n-card
-      :bordered="false"
-      style="background: var(--glass-bg); backdrop-filter: blur(20px); border: 1px solid var(--glass-border); border-radius: 16px; box-shadow: var(--glass-shadow); margin-bottom: 20px;"
-    >
-      <div style="display: flex; align-items: center; gap: 20px;">
-        <n-avatar :size="64" round style="background: var(--gradient-hero); color: #fff; font-size: 24px; font-weight: 700;">
+    <n-card :bordered="false" class="glass-card" style="margin-bottom: 20px;">
+      <div class="user-info-row">
+        <n-avatar :size="64" round style="background: var(--gradient-hero); color: #fff; font-size: 24px; font-weight: 700; flex-shrink: 0;">
           {{ authStore.user?.username?.charAt(0)?.toUpperCase() || 'U' }}
         </n-avatar>
-        <div>
-          <h2 style="margin: 0 0 4px; color: var(--text-primary); font-size: 22px; font-weight: 700;">{{ authStore.user?.username }}</h2>
-          <p style="margin: 0 0 4px; color: var(--text-secondary); font-size: 14px;">昵称：{{ authStore.user?.name || '未设置' }}</p>
-          <p style="margin: 0; color: var(--text-secondary); font-size: 14px;">
+        <div class="user-info-text">
+          <h2 class="user-name">{{ authStore.user?.username }}</h2>
+          <p class="user-detail">昵称：{{ authStore.user?.name || '未设置' }}</p>
+          <p class="user-detail">
             到期时间：
             <span :style="{ color: authStore.isExpired ? '#ef4444' : '#22c55e', fontWeight: 600 }">
               {{ authStore.user?.expiry_date || '永久' }}
@@ -100,11 +97,7 @@ const openBuyLink = () => {
     </n-card>
 
     <!-- 修改资料 -->
-    <n-card
-      title="📝 修改资料"
-      :bordered="false"
-      style="background: var(--glass-bg); backdrop-filter: blur(20px); border: 1px solid var(--glass-border); border-radius: 16px; box-shadow: var(--glass-shadow); margin-bottom: 20px;"
-    >
+    <n-card title="📝 修改资料" :bordered="false" class="glass-card" style="margin-bottom: 20px;">
       <n-form>
         <n-form-item label="昵称"><n-input v-model:value="form.name" placeholder="设置昵称" /></n-form-item>
         <n-form-item label="邮箱"><n-input v-model:value="form.email" placeholder="设置邮箱" /></n-form-item>
@@ -113,11 +106,7 @@ const openBuyLink = () => {
     </n-card>
 
     <!-- 修改密码 -->
-    <n-card
-      title="🔒 修改密码"
-      :bordered="false"
-      style="background: var(--glass-bg); backdrop-filter: blur(20px); border: 1px solid var(--glass-border); border-radius: 16px; box-shadow: var(--glass-shadow); margin-bottom: 20px;"
-    >
+    <n-card title="🔒 修改密码" :bordered="false" class="glass-card" style="margin-bottom: 20px;">
       <n-form>
         <n-form-item label="旧密码"><n-input v-model:value="form.old_password" type="password" show-password-on="click" placeholder="输入旧密码" /></n-form-item>
         <n-form-item label="新密码"><n-input v-model:value="form.new_password" type="password" show-password-on="click" placeholder="至少8位，含字母和数字" /></n-form-item>
@@ -126,11 +115,7 @@ const openBuyLink = () => {
     </n-card>
 
     <!-- 卡密兑换 -->
-    <n-card
-      title="🎫 卡密兑换"
-      :bordered="false"
-      style="background: var(--glass-bg); backdrop-filter: blur(20px); border: 1px solid var(--glass-border); border-radius: 16px; box-shadow: var(--glass-shadow); margin-bottom: 20px;"
-    >
+    <n-card title="🎫 卡密兑换" :bordered="false" class="glass-card" style="margin-bottom: 20px;">
       <n-form>
         <n-form-item label="卡密"><n-input v-model:value="cardCode" placeholder="输入卡密（如 ABCD-EFGH-IJKL-MNOP）" /></n-form-item>
         <n-space>
@@ -141,16 +126,12 @@ const openBuyLink = () => {
     </n-card>
 
     <!-- 下载记录 -->
-    <n-card
-      title="📥 下载记录"
-      :bordered="false"
-      style="background: var(--glass-bg); backdrop-filter: blur(20px); border: 1px solid var(--glass-border); border-radius: 16px; box-shadow: var(--glass-shadow);"
-    >
+    <n-card title="📥 下载记录" :bordered="false" class="glass-card">
       <div v-if="downloads.length > 0">
-        <div v-for="dl in downloads" :key="dl.id" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid rgba(0,0,0,0.06);">
-          <div>
-            <p style="margin: 0; color: var(--text-primary); font-weight: 500;">{{ dl.book?.title || '未知书籍' }}</p>
-            <p style="margin: 4px 0 0; color: var(--text-secondary); font-size: 13px;">{{ dl.book?.author || '未知作者' }} · {{ dl.created_at }}</p>
+        <div v-for="dl in downloads" :key="dl.id" class="download-item">
+          <div class="download-info">
+            <p class="download-title">{{ dl.book?.title || '未知书籍' }}</p>
+            <p class="download-meta">{{ dl.book?.author || '未知作者' }} · {{ dl.created_at }}</p>
           </div>
           <n-tag size="small" v-if="dl.book?.file_format">{{ dl.book.file_format.toUpperCase() }}</n-tag>
         </div>
@@ -159,3 +140,76 @@ const openBuyLink = () => {
     </n-card>
   </div>
 </template>
+
+<style scoped>
+.settings-page {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 40px 20px;
+}
+
+.user-info-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.user-info-text {
+  min-width: 0;
+}
+
+.user-name {
+  margin: 0 0 4px;
+  color: var(--text-primary);
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.user-detail {
+  margin: 0 0 4px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.download-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+}
+
+.download-info {
+  min-width: 0;
+  flex: 1;
+}
+
+.download-title {
+  margin: 0;
+  color: var(--text-primary);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.download-meta {
+  margin: 4px 0 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+@media (max-width: 768px) {
+  .settings-page {
+    padding: 20px 12px;
+  }
+
+  .user-info-row {
+    gap: 12px;
+  }
+
+  .user-name {
+    font-size: 18px;
+  }
+}
+</style>

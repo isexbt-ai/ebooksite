@@ -10,6 +10,13 @@ import type { UploadFileInfo } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
 
 const message = useMessage()
+const isMobile = ref(false)
+
+const checkMobile = () => { isMobile.value = window.innerWidth <= 768 }
+if (typeof window !== 'undefined') {
+  checkMobile()
+  window.addEventListener('resize', checkMobile)
+}
 
 const categoryOptions = [
   { label: '小说', value: '小说' },
@@ -92,7 +99,7 @@ interface BatchItem {
 const batchItems = ref<BatchItem[]>([])
 const batchUploading = ref(false)
 const batchCategory = ref('')
-const concurrency = ref(3) // 并发数，默认3
+const concurrency = ref(3)
 
 const extractTitle = (filename: string): string => {
   return filename.replace(/\.(txt|epub|pdf|mobi|azw3)$/i, '').replace(/[_-]/g, ' ').trim()
@@ -120,7 +127,6 @@ const handleBatchFileChange = (data: { fileList: UploadFileInfo[] }) => {
     }))
 }
 
-// 上传单个文件的Promise封装
 const uploadOneFile = (item: BatchItem): Promise<void> => {
   return new Promise((resolve) => {
     item.status = 'uploading'
@@ -171,7 +177,6 @@ const uploadOneFile = (item: BatchItem): Promise<void> => {
   })
 }
 
-// 并发池上传：同时最多N个请求，完成一个立即补上下一个
 const handleBatchUpload = async () => {
   const pending = batchItems.value.filter(item => item.status === 'pending')
   if (!pending.length) {
@@ -181,17 +186,15 @@ const handleBatchUpload = async () => {
 
   batchUploading.value = true
   const queue = [...pending]
-  const maxConcurrent = Math.min(concurrency.value, 6) // 浏览器限制最多6个同域并发
+  const maxConcurrent = Math.min(concurrency.value, 6)
 
-  // 并发池：同时运行 maxConcurrent 个任务
   const runNext = async (): Promise<void> => {
     if (queue.length === 0) return
     const item = queue.shift()!
     await uploadOneFile(item)
-    await runNext() // 完成一个，立即取下一个
+    await runNext()
   }
 
-  // 启动 maxConcurrent 个并发worker
   const workers = Array.from({ length: Math.min(maxConcurrent, queue.length) }, () => runNext())
   await Promise.all(workers)
 
@@ -207,7 +210,6 @@ const clearBatch = () => {
   batchItems.value = []
 }
 
-// 总体进度
 const totalProgress = computed(() => {
   const items = batchItems.value
   if (!items.length) return 0
@@ -242,12 +244,12 @@ const applyCategoryToAll = () => {
 
 <template>
   <div>
-    <h2 style="color: var(--text-primary); margin-bottom: 20px; font-weight: 700;">上传书籍</h2>
+    <h2 class="page-title">上传书籍</h2>
 
     <n-tabs type="line" animated>
       <!-- 单文件上传 -->
       <n-tab-pane name="single" tab="单文件上传">
-        <n-card style="background: var(--glass-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid var(--glass-border); border-radius: 16px; box-shadow: var(--glass-shadow); max-width: 600px;">
+        <n-card class="glass-card" :style="{ maxWidth: isMobile ? '100%' : '600px' }">
           <n-space vertical :size="16">
             <n-alert type="info" :bordered="false">
               选择文件即可上传，书名和作者将自动从文件名提取
@@ -277,23 +279,25 @@ const applyCategoryToAll = () => {
 
       <!-- 批量上传 -->
       <n-tab-pane name="batch" tab="批量上传">
-        <n-card style="background: var(--glass-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid var(--glass-border); border-radius: 16px; box-shadow: var(--glass-shadow);">
+        <n-card class="glass-card">
           <n-space vertical :size="16">
             <n-alert type="info" :bordered="false">
               选择多个文件后，可编辑书名和作者。系统会自动通过文件MD5去重。支持并发上传，速度更快。
             </n-alert>
 
-            <n-space align="center" :size="12">
+            <n-space align="center" :size="12" :vertical="isMobile" :wrap="true">
               <n-select
                 v-model:value="batchCategory"
                 :options="categoryOptions"
                 clearable
                 placeholder="统一设置分类"
-                style="width: 150px;"
+                :style="{ width: isMobile ? '100%' : '150px' }"
               />
               <n-button size="small" @click="applyCategoryToAll" :disabled="!batchCategory">应用到全部</n-button>
-              <span style="color: var(--text-secondary); font-size: 13px; margin-left: 8px;">并发数：</span>
-              <n-input-number v-model:value="concurrency" :min="1" :max="6" size="small" style="width: 70px;" :disabled="batchUploading" />
+              <n-space align="center" :size="4">
+                <span style="color: var(--text-secondary); font-size: 13px;">并发数：</span>
+                <n-input-number v-model:value="concurrency" :min="1" :max="6" size="small" style="width: 70px;" :disabled="batchUploading" />
+              </n-space>
             </n-space>
 
             <n-upload
@@ -319,12 +323,35 @@ const applyCategoryToAll = () => {
             </div>
 
             <div v-if="batchItems.length">
+              <!-- 桌面端表格 -->
               <n-data-table
+                v-if="!isMobile"
                 :columns="batchColumns"
                 :data="batchItems"
                 :bordered="false"
                 size="small"
               />
+
+              <!-- 移动端卡片列表 -->
+              <div v-if="isMobile" class="mobile-batch-list">
+                <div v-for="item in batchItems" :key="item.id" class="mobile-batch-item">
+                  <div class="mobile-batch-header">
+                    <n-input v-model:value="item.title" size="small" placeholder="书名" style="flex: 1; margin-right: 8px;" />
+                    <n-tag size="small">{{ item.format.toUpperCase() }}</n-tag>
+                  </div>
+                  <div class="mobile-batch-meta">
+                    <n-input v-model:value="item.author" size="small" placeholder="作者" style="width: 120px;" />
+                    <span style="color: var(--text-secondary); font-size: 13px;">{{ formatSize(item.size) }}</span>
+                  </div>
+                  <div class="mobile-batch-status">
+                    <n-progress v-if="item.status === 'uploading'" type="line" :percentage="item.progress" indicator-placement="inside" style="flex: 1;" />
+                    <span v-else-if="item.status === 'success'" style="color: #22c55e; font-size: 13px;">✅ 成功</span>
+                    <span v-else-if="item.status === 'error'" style="color: #ef4444; font-size: 13px;">❌ {{ item.message }}</span>
+                    <span v-else style="color: var(--text-secondary); font-size: 13px;">⏳ 待上传</span>
+                  </div>
+                </div>
+              </div>
+
               <n-space style="margin-top: 16px;">
                 <n-button type="primary" :loading="batchUploading" @click="handleBatchUpload">
                   开始上传 ({{ batchItems.filter(i => i.status === 'pending').length }} 个)
@@ -338,3 +365,42 @@ const applyCategoryToAll = () => {
     </n-tabs>
   </div>
 </template>
+
+<style scoped>
+.page-title {
+  color: var(--text-primary);
+  margin-bottom: 20px;
+  font-weight: 700;
+}
+
+.mobile-batch-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mobile-batch-item {
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.02);
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.mobile-batch-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.mobile-batch-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.mobile-batch-status {
+  display: flex;
+  align-items: center;
+}
+</style>

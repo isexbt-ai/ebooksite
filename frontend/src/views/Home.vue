@@ -5,7 +5,7 @@ import { useAuthStore } from '@/stores/auth'
 import { api } from '@/api/client'
 import type { Book, Settings } from '@/api/types'
 import { formatSize } from '@/utils/format'
-import { NButton, NInput, NCard, NSpace, NGrid, NGi, NTag, NStatistic, NSkeleton } from 'naive-ui'
+import { NButton, NInput, NCard, NSpace, NTag, NSkeleton, NDrawer, NDrawerContent } from 'naive-ui'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -13,6 +13,7 @@ const searchQuery = ref('')
 const hotBooks = ref<Book[]>([])
 const settings = ref<Settings>({})
 const loading = ref(true)
+const showMobileMenu = ref(false)
 
 onMounted(async () => {
   try {
@@ -41,54 +42,97 @@ const handleBuyCard = () => {
 
 <template>
   <div class="home-page">
-    <!-- 毛玻璃导航栏 -->
-    <nav class="glass-nav" style="position: fixed; top: 0; left: 0; right: 0; z-index: 100; padding: 0 24px; height: 64px; display: flex; align-items: center; justify-content: space-between;">
-      <div style="display: flex; align-items: center; gap: 12px; cursor: pointer;" @click="router.push('/')">
-        <span style="font-size: 24px;">📚</span>
-        <span style="font-size: 18px; font-weight: 700; color: var(--text-primary);">{{ settings.site_name || '搜书机器人' }}</span>
-      </div>
-      <div style="display: flex; align-items: center; gap: 8px;">
-        <n-input
-          v-model:value="searchQuery"
-          placeholder="搜索书名或作者..."
-          size="small"
-          style="width: 240px;"
-          @keyup.enter="handleSearch"
-        >
-          <template #suffix>
-            <n-button size="small" type="primary" @click="handleSearch">搜索</n-button>
+    <!-- 导航栏 -->
+    <nav class="glass-nav">
+      <div class="nav-inner">
+        <div class="nav-brand" @click="router.push('/')">
+          <span style="font-size: 24px;">📚</span>
+          <span class="nav-title">{{ settings.site_name || '搜书机器人' }}</span>
+        </div>
+
+        <!-- 桌面端搜索+按钮 -->
+        <div class="nav-desktop">
+          <n-input
+            v-model:value="searchQuery"
+            placeholder="搜索书名或作者..."
+            size="small"
+            class="nav-search"
+            @keyup.enter="handleSearch"
+          >
+            <template #suffix>
+              <n-button size="small" type="primary" @click="handleSearch">搜索</n-button>
+            </template>
+          </n-input>
+          <template v-if="!authStore.isLoggedIn">
+            <n-button size="small" type="primary" @click="router.push('/login')">登录</n-button>
+            <n-button size="small" @click="router.push('/register')">注册</n-button>
           </template>
-        </n-input>
-        <template v-if="!authStore.isLoggedIn">
-          <n-button size="small" type="primary" @click="router.push('/login')">登录</n-button>
-          <n-button size="small" @click="router.push('/register')">注册</n-button>
-        </template>
-        <template v-else>
-          <span style="font-size: 13px; color: var(--text-secondary); margin: 0 4px;">
-            {{ authStore.user?.username }}
-            <template v-if="authStore.user?.expiry_date"> · 到期 {{ authStore.user.expiry_date }}</template>
-          </span>
-          <n-button v-if="authStore.isAdmin" size="small" type="warning" @click="router.push('/admin')">管理后台</n-button>
-          <n-button v-if="!authStore.isAdmin" size="small" @click="router.push('/settings')">个人设置</n-button>
-          <n-button size="small" @click="authStore.logout().then(() => router.push('/'))">退出</n-button>
-        </template>
+          <template v-else>
+            <span class="nav-user-info">
+              {{ authStore.user?.username }}
+              <template v-if="authStore.user?.expiry_date"> · 到期 {{ authStore.user.expiry_date }}</template>
+            </span>
+            <n-button v-if="authStore.isAdmin" size="small" type="warning" @click="router.push('/admin')">管理后台</n-button>
+            <n-button v-if="!authStore.isAdmin" size="small" @click="router.push('/settings')">个人设置</n-button>
+            <n-button size="small" @click="authStore.logout().then(() => router.push('/'))">退出</n-button>
+          </template>
+        </div>
+
+        <!-- 移动端菜单按钮 -->
+        <div class="nav-mobile-toggle">
+          <n-button quaternary @click="showMobileMenu = true" style="font-size: 20px; padding: 4px 8px;">☰</n-button>
+        </div>
       </div>
     </nav>
 
+    <!-- 移动端抽屉菜单 -->
+    <n-drawer v-model:show="showMobileMenu" placement="right" :width="280">
+      <n-drawer-content title="菜单" :closable="true">
+        <div class="mobile-menu-search">
+          <n-input
+            v-model:value="searchQuery"
+            placeholder="搜索书名或作者..."
+            @keyup.enter="handleSearch(); showMobileMenu = false"
+          >
+            <template #suffix>
+              <n-button type="primary" size="small" @click="handleSearch(); showMobileMenu = false">搜索</n-button>
+            </template>
+          </n-input>
+        </div>
+
+        <div class="mobile-menu-items">
+          <template v-if="!authStore.isLoggedIn">
+            <n-button block type="primary" @click="router.push('/login'); showMobileMenu = false">登录</n-button>
+            <n-button block @click="router.push('/register'); showMobileMenu = false">注册</n-button>
+          </template>
+          <template v-else>
+            <div class="mobile-user-card">
+              <p style="margin: 0; font-weight: 600; color: var(--text-primary);">{{ authStore.user?.username }}</p>
+              <p style="margin: 4px 0 0; font-size: 13px; color: var(--text-secondary);">
+                到期：{{ authStore.user?.expiry_date || '永久' }}
+              </p>
+            </div>
+            <n-button v-if="authStore.isAdmin" block type="warning" @click="router.push('/admin'); showMobileMenu = false">管理后台</n-button>
+            <n-button v-if="!authStore.isAdmin" block @click="router.push('/settings'); showMobileMenu = false">个人设置</n-button>
+            <n-button block @click="authStore.logout().then(() => { router.push('/'); showMobileMenu = false })">退出登录</n-button>
+          </template>
+          <n-divider style="margin: 8px 0;" />
+          <n-button block @click="router.push('/feedback'); showMobileMenu = false">💬 意见反馈</n-button>
+          <n-button v-if="settings.buy_link" block type="primary" @click="handleBuyCard(); showMobileMenu = false">🛒 购买卡密</n-button>
+        </div>
+      </n-drawer-content>
+    </n-drawer>
+
     <!-- Hero 区域 -->
     <div class="hero-section">
-      <div style="text-align: center; position: relative; z-index: 1;">
-        <h1 style="font-size: 52px; color: #fff; margin: 0 0 16px; font-weight: 800; text-shadow: 0 2px 8px rgba(0,0,0,0.15);">
-          📚 {{ settings.site_name || '搜书机器人' }}
-        </h1>
-        <p style="font-size: 20px; color: rgba(255,255,255,0.9); margin: 0 0 36px; text-shadow: 0 1px 4px rgba(0,0,0,0.1);">
-          {{ settings.site_description || '电子书搜索与下载平台' }}
-        </p>
+      <div class="hero-inner">
+        <h1 class="hero-title">📚 {{ settings.site_name || '搜书机器人' }}</h1>
+        <p class="hero-desc">{{ settings.site_description || '电子书搜索与下载平台' }}</p>
         <n-input
           v-model:value="searchQuery"
           placeholder="搜索书名或作者..."
           size="large"
-          style="max-width: 560px; margin: 0 auto;"
+          class="hero-search"
           @keyup.enter="handleSearch"
         >
           <template #suffix>
@@ -99,27 +143,26 @@ const handleBuyCard = () => {
     </div>
 
     <!-- 热门书籍 -->
-    <div style="max-width: 1200px; margin: 0 auto; padding: 0 20px 40px;">
+    <div class="hot-books-section">
       <div v-if="!loading && hotBooks.length > 0">
-        <h2 style="color: var(--text-primary); margin-bottom: 24px; font-size: 24px; font-weight: 700;">🔥 热门书籍</h2>
-        <n-grid :cols="4" :x-gap="16" :y-gap="16" responsive="screen" item-responsive>
-          <n-gi v-for="book in hotBooks" :key="book.id" span="4 m:2 l:1">
-            <n-card
-              hoverable
-              class="glass-card"
-              style="cursor: pointer; background: var(--glass-bg); backdrop-filter: blur(20px); border: 1px solid var(--glass-border); border-radius: 16px;"
-              @click="router.push(`/books/${book.id}`)"
-            >
-              <h3 style="color: var(--text-primary); margin: 0 0 8px; font-size: 16px; font-weight: 600;">{{ book.title }}</h3>
-              <p style="color: var(--text-secondary); font-size: 14px; margin: 0 0 12px;">{{ book.author || '未知作者' }}</p>
-              <n-space>
-                <n-tag v-if="book.category" size="small" type="info">{{ book.category }}</n-tag>
-                <n-tag size="small">{{ book.file_format?.toUpperCase() || '未知' }}</n-tag>
-                <n-tag size="small" type="success">{{ formatSize(book.file_size) }}</n-tag>
-              </n-space>
-            </n-card>
-          </n-gi>
-        </n-grid>
+        <h2 class="section-title">🔥 热门书籍</h2>
+        <div class="book-grid">
+          <n-card
+            v-for="book in hotBooks"
+            :key="book.id"
+            hoverable
+            class="glass-card book-card"
+            @click="router.push(`/books/${book.id}`)"
+          >
+            <h3 class="book-card-title">{{ book.title }}</h3>
+            <p class="book-card-author">{{ book.author || '未知作者' }}</p>
+            <n-space size="small">
+              <n-tag v-if="book.category" size="small" type="info">{{ book.category }}</n-tag>
+              <n-tag size="small">{{ book.file_format?.toUpperCase() || '未知' }}</n-tag>
+              <n-tag size="small" type="success">{{ formatSize(book.file_size) }}</n-tag>
+            </n-space>
+          </n-card>
+        </div>
       </div>
 
       <div v-if="loading" style="text-align: center; padding: 40px;">
@@ -127,26 +170,104 @@ const handleBuyCard = () => {
       </div>
 
       <!-- 快捷操作区 -->
-      <div style="text-align: center; margin-top: 60px; display: flex; justify-content: center; gap: 16px; flex-wrap: wrap;">
-        <n-button size="large" @click="router.push('/feedback')">
-          💬 意见反馈
-        </n-button>
-        <n-button size="large" type="primary" @click="handleBuyCard">
-          🛒 购买卡密
-        </n-button>
+      <div class="quick-actions">
+        <n-button size="large" @click="router.push('/feedback')">💬 意见反馈</n-button>
+        <n-button size="large" type="primary" @click="handleBuyCard">🛒 购买卡密</n-button>
       </div>
     </div>
   </div>
 </template>
 
+<script lang="ts">
+import { NDivider } from 'naive-ui'
+</script>
+
 <style scoped>
 .home-page {
-  padding-top: 64px;
+  padding-top: 56px;
 }
 
+/* 导航栏 */
+.glass-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.04);
+}
+
+.nav-inner {
+  padding: 0 20px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.nav-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.nav-desktop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nav-search {
+  width: 240px;
+}
+
+.nav-user-info {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 0 4px;
+  white-space: nowrap;
+}
+
+.nav-mobile-toggle {
+  display: none;
+}
+
+/* 移动端菜单 */
+.mobile-menu-search {
+  margin-bottom: 16px;
+}
+
+.mobile-menu-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mobile-user-card {
+  padding: 12px;
+  background: rgba(99, 102, 241, 0.06);
+  border-radius: 12px;
+  margin-bottom: 4px;
+}
+
+/* Hero 区域 */
 .hero-section {
   background: var(--gradient-hero);
-  padding: 80px 20px 60px;
+  padding: 60px 20px 50px;
   margin-bottom: 40px;
   position: relative;
   overflow: hidden;
@@ -166,5 +287,148 @@ const handleBuyCard = () => {
 @keyframes heroGlow {
   0% { transform: translate(0, 0); }
   100% { transform: translate(30px, -20px); }
+}
+
+.hero-inner {
+  text-align: center;
+  position: relative;
+  z-index: 1;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.hero-title {
+  font-size: 48px;
+  color: #fff;
+  margin: 0 0 16px;
+  font-weight: 800;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.hero-desc {
+  font-size: 18px;
+  color: rgba(255,255,255,0.9);
+  margin: 0 0 32px;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.1);
+}
+
+.hero-search {
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+/* 热门书籍 */
+.hot-books-section {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px 40px;
+}
+
+.section-title {
+  color: var(--text-primary);
+  margin-bottom: 24px;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.book-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.book-card-title {
+  color: var(--text-primary);
+  margin: 0 0 8px;
+  font-size: 16px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.book-card-author {
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin: 0 0 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 快捷操作 */
+.quick-actions {
+  text-align: center;
+  margin-top: 60px;
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .nav-desktop {
+    display: none;
+  }
+
+  .nav-mobile-toggle {
+    display: block;
+  }
+
+  .nav-title {
+    font-size: 16px;
+  }
+
+  .hero-section {
+    padding: 40px 16px 36px;
+  }
+
+  .hero-title {
+    font-size: 28px;
+  }
+
+  .hero-desc {
+    font-size: 15px;
+    margin-bottom: 24px;
+  }
+
+  .book-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .book-card-title {
+    font-size: 14px;
+  }
+
+  .book-card-author {
+    font-size: 13px;
+    margin-bottom: 8px;
+  }
+
+  .hot-books-section {
+    padding: 0 12px 30px;
+  }
+
+  .section-title {
+    font-size: 20px;
+    margin-bottom: 16px;
+  }
+
+  .quick-actions {
+    margin-top: 40px;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero-title {
+    font-size: 24px;
+  }
+
+  .book-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
 }
 </style>

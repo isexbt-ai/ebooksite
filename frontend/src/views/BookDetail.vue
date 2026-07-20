@@ -5,13 +5,14 @@ import { useAuthStore } from '@/stores/auth'
 import { api } from '@/api/client'
 import type { Book } from '@/api/types'
 import { formatSize } from '@/utils/format'
-import { useMessage } from 'naive-ui'
+import { useMessage, useDialog } from 'naive-ui'
 import { NCard, NButton, NDescriptions, NDescriptionsItem, NTag, NSpace, NSpin } from 'naive-ui'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const message = useMessage()
+const dialog = useDialog()
 const book = ref<Book | null>(null)
 const loading = ref(true)
 const downloading = ref(false)
@@ -27,11 +28,39 @@ onMounted(async () => {
 })
 
 const handleDownload = async () => {
-  if (!authStore.isLoggedIn) { router.push('/login'); return }
+  if (!authStore.isLoggedIn) {
+    dialog.warning({
+      title: '需要登录',
+      content: '下载书籍需要登录账号，是否前往登录？',
+      positiveText: '去登录',
+      negativeText: '取消',
+      onPositiveClick: () => {
+        router.push(`/login?redirect=/books/${route.params.id}`)
+      },
+    })
+    return
+  }
+
   downloading.value = true
   try {
-    const res = await api.get<{ download_url: string; file_name: string }>(`/books/${route.params.id}/download`)
-    window.open(res.data.download_url, '_blank')
+    const res = await api.get<{ download_url: string; file_name: string; file_size?: number; expires_in?: number }>(`/books/${route.params.id}/download`)
+    const url = res.data.download_url
+    if (!url) {
+      message.error('获取下载链接失败')
+      return
+    }
+
+    // 使用隐藏 <a> 标签触发下载，兼容移动端
+    const link = document.createElement('a')
+    link.href = url
+    link.download = res.data.file_name || ''
+    link.target = '_blank'
+    link.rel = 'noopener noreferrer'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+
+    message.success('开始下载')
   } catch (e: any) {
     message.error(e.message || '下载失败')
   }
@@ -40,17 +69,17 @@ const handleDownload = async () => {
 </script>
 
 <template>
-  <div style="max-width: 800px; margin: 0 auto; padding: 40px 20px;">
+  <div class="book-detail-page">
     <n-button text type="primary" @click="router.back()" style="margin-bottom: 20px; font-size: 15px;">← 返回</n-button>
 
     <n-spin :show="loading">
       <n-card
         v-if="book"
         :bordered="false"
-        style="background: var(--glass-bg); backdrop-filter: blur(20px); border: 1px solid var(--glass-border); border-radius: 16px; box-shadow: var(--glass-shadow);"
+        class="glass-card"
       >
         <div style="margin-bottom: 20px;">
-          <h1 style="color: var(--text-primary); margin: 0 0 8px; font-size: 26px; font-weight: 700;">{{ book.title }}</h1>
+          <h1 style="color: var(--text-primary); margin: 0 0 8px; font-size: 24px; font-weight: 700; line-height: 1.4;">{{ book.title }}</h1>
           <p style="color: var(--text-secondary); font-size: 15px; margin: 0;">{{ book.author || '未知作者' }}</p>
         </div>
 
@@ -75,3 +104,17 @@ const handleDownload = async () => {
     </n-spin>
   </div>
 </template>
+
+<style scoped>
+.book-detail-page {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 80px 20px 40px;
+}
+
+@media (max-width: 768px) {
+  .book-detail-page {
+    padding: 70px 12px 20px;
+  }
+}
+</style>

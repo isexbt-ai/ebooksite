@@ -4,7 +4,7 @@ import { api } from '@/api/client'
 import type { Feedback, PaginatedData } from '@/api/types'
 import { formatDateTime } from '@/utils/format'
 import { useMessage, useDialog } from 'naive-ui'
-import { NCard, NDataTable, NButton, NTag, NPagination } from 'naive-ui'
+import { NCard, NDataTable, NButton, NTag, NPagination, NSpace } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
 
 const message = useMessage()
@@ -13,6 +13,10 @@ const feedbacks = ref<Feedback[]>([])
 const total = ref(0)
 const page = ref(1)
 const loading = ref(false)
+const isMobile = ref(false)
+
+const checkMobile = () => { isMobile.value = window.innerWidth <= 768 }
+onMounted(() => { checkMobile(); window.addEventListener('resize', checkMobile) })
 
 const fetchFeedbacks = async () => {
   loading.value = true
@@ -71,12 +75,91 @@ const columns: DataTableColumns<Feedback> = [
 
 <template>
   <div>
-    <h2 style="color: var(--text-primary); margin-bottom: 20px; font-weight: 700;">反馈管理</h2>
-    <n-card style="background: var(--glass-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid var(--glass-border); border-radius: 16px; box-shadow: var(--glass-shadow);">
+    <h2 class="page-title">反馈管理</h2>
+
+    <!-- 桌面端表格 -->
+    <n-card v-if="!isMobile" class="glass-card">
       <n-data-table :columns="columns" :data="feedbacks" :loading="loading" :bordered="false" />
-      <div style="display: flex; justify-content: center; margin-top: 16px;">
+      <div class="pagination-wrap">
         <n-pagination v-if="total > 20" :page="page" :page-count="Math.ceil(total / 20)" @update:page="p => { page = p; fetchFeedbacks() }" />
       </div>
     </n-card>
+
+    <!-- 移动端卡片列表 -->
+    <div v-if="isMobile" class="mobile-list">
+      <n-card v-for="fb in feedbacks" :key="fb.id" class="glass-card mobile-list-item">
+        <div class="mobile-list-header">
+          <n-tag :type="statusTag(fb.status)" size="small">{{ statusLabel(fb.status) }}</n-tag>
+          <span class="mobile-list-time">{{ formatDateTime(fb.created_at) }}</span>
+        </div>
+        <p class="mobile-list-content">{{ fb.content }}</p>
+        <p v-if="fb.contact" class="mobile-list-contact">联系：{{ fb.contact }}</p>
+        <div class="mobile-list-footer">
+          <n-space size="small">
+            <n-button v-if="fb.status !== 'resolved'" size="small" @click="updateStatus(fb.id, 'replied')">回复</n-button>
+            <n-button v-if="fb.status !== 'resolved'" size="small" type="success" @click="updateStatus(fb.id, 'resolved')">解决</n-button>
+            <n-button size="small" type="error" @click="deleteFeedback(fb)">删除</n-button>
+          </n-space>
+        </div>
+      </n-card>
+      <div class="pagination-wrap">
+        <n-pagination v-if="total > 20" :page="page" :page-count="Math.ceil(total / 20)" @update:page="p => { page = p; fetchFeedbacks() }" />
+      </div>
+    </div>
   </div>
 </template>
+
+<style scoped>
+.page-title {
+  color: var(--text-primary);
+  margin-bottom: 20px;
+  font-weight: 700;
+}
+
+.pagination-wrap {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.mobile-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mobile-list-item {
+  margin-bottom: 0;
+}
+
+.mobile-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.mobile-list-time {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.mobile-list-content {
+  margin: 0 0 8px;
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.5;
+  word-break: break-all;
+}
+
+.mobile-list-contact {
+  margin: 0 0 8px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.mobile-list-footer {
+  display: flex;
+  justify-content: flex-end;
+}
+</style>

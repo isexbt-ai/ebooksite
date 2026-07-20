@@ -30,18 +30,16 @@ const handleLogin = async () => {
 </script>
 
 <template>
-  <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--gradient-hero); position: relative; overflow: hidden;">
+  <div class="admin-login-page">
     <!-- 装饰背景 -->
-    <div style="position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: radial-gradient(circle at 30% 50%, rgba(255,255,255,0.1) 0%, transparent 50%); pointer-events: none;"></div>
-    <div style="position: absolute; bottom: -30%; right: -30%; width: 60%; height: 60%; background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 60%); border-radius: 50%; pointer-events: none;"></div>
+    <div class="admin-login-bg1"></div>
+    <div class="admin-login-bg2"></div>
 
-    <n-card
-      style="width: 420px; background: var(--glass-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid var(--glass-border); border-radius: 16px; box-shadow: var(--glass-shadow); position: relative; z-index: 1;"
-    >
-      <div style="text-align: center; margin-bottom: 24px;">
+    <n-card class="admin-login-card glass-card">
+      <div class="admin-login-header">
         <div style="font-size: 40px; margin-bottom: 8px;">📚</div>
-        <h2 style="margin: 0; font-size: 22px; font-weight: 700; color: var(--text-primary);">管理员登录</h2>
-        <p style="margin: 8px 0 0; font-size: 14px; color: var(--text-secondary);">搜书机器人后台管理系统</p>
+        <h2 class="admin-login-title">管理员登录</h2>
+        <p class="admin-login-desc">搜书机器人后台管理系统</p>
       </div>
       <n-form>
         <n-form-item label="用户名">
@@ -55,7 +53,7 @@ const handleLogin = async () => {
           block
           :loading="loading"
           @click="handleLogin"
-          style="height: 42px; font-size: 15px; font-weight: 600; border-radius: 10px; background: var(--gradient-hero); border: none;"
+          class="admin-login-btn"
         >
           登 录
         </n-button>
@@ -63,3 +61,83 @@ const handleLogin = async () => {
     </n-card>
   </div>
 </template>
+
+<style scoped>
+.admin-login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gradient-hero);
+  position: relative;
+  overflow: hidden;
+  padding: 20px;
+}
+
+.admin-login-bg1 {
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle at 30% 50%, rgba(255,255,255,0.1) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+.admin-login-bg2 {
+  position: absolute;
+  bottom: -30%;
+  right: -30%;
+  width: 60%;
+  height: 60%;
+  background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 60%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.admin-login-card {
+  width: 420px;
+  max-width: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+.admin-login-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.admin-login-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.admin-login-desc {
+  margin: 8px 0 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.admin-login-btn {
+  height: 42px;
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: 10px;
+  background: var(--gradient-hero);
+  border: none;
+}
+
+@media (max-width: 480px) {
+  .admin-login-page {
+    padding: 16px;
+    align-items: flex-start;
+    padding-top: 80px;
+  }
+
+  .admin-login-card {
+    width: 100%;
+  }
+}
+</style>

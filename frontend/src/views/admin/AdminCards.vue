@@ -13,6 +13,10 @@ const total = ref(0)
 const page = ref(1)
 const loading = ref(false)
 const createdCodes = ref<string[]>([])
+const isMobile = ref(false)
+
+const checkMobile = () => { isMobile.value = window.innerWidth <= 768 }
+onMounted(() => { checkMobile(); window.addEventListener('resize', checkMobile) })
 
 const form = ref({ count: 1, type: 'register', duration_days: 30 })
 const typeOptions = [
@@ -57,20 +61,21 @@ const columns: DataTableColumns<Card> = [
 
 <template>
   <div>
-    <h2 style="color: var(--text-primary); margin-bottom: 20px; font-weight: 700;">卡密管理</h2>
+    <h2 class="page-title">卡密管理</h2>
 
-    <n-card title="创建卡密" style="margin-bottom: 20px; background: var(--glass-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid var(--glass-border); border-radius: 16px; box-shadow: var(--glass-shadow);">
+    <!-- 创建卡密 -->
+    <n-card class="glass-card" style="margin-bottom: 20px;">
       <template #header>
         <span style="color: var(--text-primary); font-weight: 600;">创建卡密</span>
       </template>
-      <n-form inline>
+      <n-form :inline="!isMobile" :label-placement="isMobile ? 'left' : 'left'">
         <n-form-item label="数量"><n-input-number v-model:value="form.count" :min="1" :max="100" style="width: 100px;" /></n-form-item>
         <n-form-item label="类型"><n-select v-model:value="form.type" :options="typeOptions" style="width: 120px;" /></n-form-item>
         <n-form-item label="天数"><n-input-number v-model:value="form.duration_days" :min="1" :max="3650" style="width: 100px;" /></n-form-item>
         <n-form-item><n-button type="primary" @click="createCards">生成</n-button></n-form-item>
       </n-form>
       <div v-if="createdCodes.length" style="margin-top: 12px;">
-        <n-space align="center">
+        <n-space align="center" :vertical="isMobile">
           <span style="color: var(--text-secondary);">新卡密：</span>
           <n-tag v-for="code in createdCodes" :key="code" type="success">{{ code }}</n-tag>
           <n-button size="small" @click="copyCodes">复制全部</n-button>
@@ -78,14 +83,73 @@ const columns: DataTableColumns<Card> = [
       </div>
     </n-card>
 
-    <n-card style="background: var(--glass-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid var(--glass-border); border-radius: 16px; box-shadow: var(--glass-shadow);">
+    <!-- 桌面端表格 -->
+    <n-card v-if="!isMobile" class="glass-card">
       <template #header>
         <span style="color: var(--text-primary); font-weight: 600;">卡密列表</span>
       </template>
       <n-data-table :columns="columns" :data="cards" :loading="loading" :bordered="false" />
-      <div style="display: flex; justify-content: center; margin-top: 16px;">
+      <div class="pagination-wrap">
         <n-pagination v-if="total > 20" :page="page" :page-count="Math.ceil(total / 20)" @update:page="p => { page = p; fetchCards() }" />
       </div>
     </n-card>
+
+    <!-- 移动端卡片列表 -->
+    <div v-if="isMobile" class="mobile-list">
+      <n-card v-for="card in cards" :key="card.id" class="glass-card mobile-list-item">
+        <div class="mobile-list-header">
+          <n-tag type="info" size="small">{{ card.code }}</n-tag>
+          <n-space size="small">
+            <n-tag size="small">{{ card.type === 'register' ? '注册卡' : '续费卡' }}</n-tag>
+            <n-tag :type="card.used ? 'success' : 'default'" size="small">{{ card.used ? '已用' : '未用' }}</n-tag>
+          </n-space>
+        </div>
+        <div class="mobile-list-meta">
+          <span>有效天数：{{ card.duration_days }}天</span>
+          <span>{{ formatDateTime(card.created_at) }}</span>
+        </div>
+      </n-card>
+      <div class="pagination-wrap">
+        <n-pagination v-if="total > 20" :page="page" :page-count="Math.ceil(total / 20)" @update:page="p => { page = p; fetchCards() }" />
+      </div>
+    </div>
   </div>
 </template>
+
+<style scoped>
+.page-title {
+  color: var(--text-primary);
+  margin-bottom: 20px;
+  font-weight: 700;
+}
+
+.pagination-wrap {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.mobile-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mobile-list-item {
+  margin-bottom: 0;
+}
+
+.mobile-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.mobile-list-meta {
+  display: flex;
+  gap: 12px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+</style>
