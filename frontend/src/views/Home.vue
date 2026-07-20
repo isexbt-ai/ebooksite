@@ -48,6 +48,35 @@ const handleBuyCard = () => {
     message.info('暂未配置购买链接，请联系管理员')
   }
 }
+
+const handleRandomBook = async () => {
+  try {
+    const res = await api.get<Book>('/books/random')
+    if (res.data?.id) {
+      router.push(`/books/${res.data.id}`)
+    } else {
+      message.info('暂无书籍')
+    }
+  } catch {
+    message.error('获取随机书籍失败')
+  }
+}
+
+const handleVideoLink = () => {
+  if (settings.value.video_link) {
+    window.open(settings.value.video_link, '_blank')
+  } else {
+    message.info('暂未配置视频链接')
+  }
+}
+
+const handleGameLink = () => {
+  if (settings.value.game_link) {
+    window.open(settings.value.game_link, '_blank')
+  } else {
+    message.info('暂未配置游戏链接')
+  }
+}
 </script>
 
 <template>
@@ -126,6 +155,21 @@ const handleBuyCard = () => {
             <n-button type="primary" size="large" @click="handleSearch">搜索</n-button>
           </template>
         </n-input>
+        <!-- 快捷入口 -->
+        <div class="quick-links">
+          <div class="quick-link-item" @click="handleRandomBook">
+            <span class="quick-link-icon">🎲</span>
+            <span class="quick-link-text">随机书籍</span>
+          </div>
+          <div class="quick-link-item" @click="handleVideoLink">
+            <span class="quick-link-icon">🎬</span>
+            <span class="quick-link-text">视频</span>
+          </div>
+          <div class="quick-link-item" @click="handleGameLink">
+            <span class="quick-link-icon">🎮</span>
+            <span class="quick-link-text">游戏</span>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -290,6 +334,44 @@ const handleBuyCard = () => {
   margin: 0 auto;
 }
 
+/* 快捷入口 */
+.quick-links {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.quick-link-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 20px;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 24px;
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+  font-weight: 500;
+  user-select: none;
+}
+
+.quick-link-item:hover {
+  background: rgba(255, 255, 255, 0.35);
+  transform: translateY(-1px);
+}
+
+.quick-link-item:active {
+  transform: translateY(0);
+}
+
+.quick-link-icon {
+  font-size: 18px;
+}
+
 /* 热门书籍 */
 .hot-books-section {
   max-width: 1200px;
@@ -389,6 +471,20 @@ const handleBuyCard = () => {
   .quick-actions {
     margin-top: 40px;
   }
+
+  .quick-links {
+    gap: 10px;
+    margin-top: 16px;
+  }
+
+  .quick-link-item {
+    padding: 6px 14px;
+    font-size: 13px;
+  }
+
+  .quick-link-icon {
+    font-size: 16px;
+  }
 }
 
 @media (max-width: 480px) {
@@ -413,6 +509,19 @@ const handleBuyCard = () => {
   .book-card-author {
     font-size: 12px;
     margin-bottom: 6px;
+  }
+
+  .quick-links {
+    gap: 8px;
+  }
+
+  .quick-link-item {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  .quick-link-icon {
+    font-size: 15px;
   }
 }
 </style>

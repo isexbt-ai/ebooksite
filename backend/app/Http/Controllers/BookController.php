@@ -72,6 +72,22 @@ class BookController extends Controller
     }
 
     /**
+     * 随机书籍
+     */
+    public function random(): JsonResponse
+    {
+        $book = Book::where('upload_status', 'completed')
+            ->inRandomOrder()
+            ->first();
+
+        if (!$book) {
+            return $this->api->notFound('暂无书籍');
+        }
+
+        return $this->api->success($book);
+    }
+
+    /**
      * 下载书籍（需要认证）
      * 返回一次性下载 token，前端通过代理路由下载
      */

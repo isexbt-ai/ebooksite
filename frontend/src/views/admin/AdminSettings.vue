@@ -37,6 +37,8 @@ const save = async () => {
           <n-form-item label="站点描述"><n-input v-model:value="settings.site_description" placeholder="电子书搜索与下载平台" /></n-form-item>
           <n-form-item label="每日下载上限"><n-input v-model:value="settings.download_limit" placeholder="10" /></n-form-item>
           <n-form-item label="购买链接"><n-input v-model:value="settings.buy_link" placeholder="购买卡密的链接" /></n-form-item>
+          <n-form-item label="视频链接"><n-input v-model:value="settings.video_link" placeholder="视频网站链接" /></n-form-item>
+          <n-form-item label="游戏链接"><n-input v-model:value="settings.game_link" placeholder="游戏网站链接" /></n-form-item>
           <n-form-item label="书籍数量显示"><n-input v-model:value="settings.book_count_display" placeholder="显示在首页的书籍数量" /></n-form-item>
           <n-button type="primary" :loading="saving" @click="save" style="background: var(--gradient-hero); border: none;">保存设置</n-button>
         </n-form>

@@ -14,7 +14,7 @@ class SettingsController extends Controller
      */
     public function index(): JsonResponse
     {
-        $publicKeys = ['site_name', 'site_description', 'buy_link', 'book_count_display', 'download_limit'];
+        $publicKeys = ['site_name', 'site_description', 'buy_link', 'book_count_display', 'download_limit', 'video_link', 'game_link'];
         $settings = [];
 
         foreach ($publicKeys as $key) {
