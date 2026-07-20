@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { api } from '@/api/client'
 import type { Book, PaginatedData } from '@/api/types'
 import { formatSize } from '@/utils/format'
-import { NInput, NButton, NCard, NTag, NSpace, NPagination, NSpin, NEmpty } from 'naive-ui'
+import { NInput, NButton, NTag, NSpace, NPagination, NSpin, NEmpty } from 'naive-ui'
 
 const route = useRoute()
 const router = useRouter()
@@ -34,7 +34,8 @@ const handlePageChange = (p: number) => { page.value = p; search() }
 
 <template>
   <div class="search-page">
-    <!-- 搜索框 -->
+    <n-button text type="primary" @click="router.push('/')" class="back-btn">← 返回首页</n-button>
+
     <div class="search-header">
       <n-input
         v-model:value="query"
@@ -49,12 +50,13 @@ const handlePageChange = (p: number) => { page.value = p; search() }
       </n-input>
     </div>
 
+    <p v-if="!loading && total > 0" class="result-stat">共找到 {{ total }} 本相关书籍</p>
+
     <n-spin :show="loading">
       <div class="book-grid">
-        <n-card
+        <div
           v-for="book in books"
           :key="book.id"
-          hoverable
           class="glass-card book-card"
           @click="router.push(`/books/${book.id}`)"
         >
@@ -65,7 +67,7 @@ const handlePageChange = (p: number) => { page.value = p; search() }
             <n-tag size="small">{{ book.file_format?.toUpperCase() || '未知' }}</n-tag>
             <n-tag size="small" type="success">{{ formatSize(book.file_size) }}</n-tag>
           </n-space>
-        </n-card>
+        </div>
       </div>
       <div v-if="!loading && books.length === 0 && query" style="text-align: center; padding: 60px 20px;">
         <n-empty description="未找到相关书籍" />
@@ -85,9 +87,14 @@ const handlePageChange = (p: number) => { page.value = p; search() }
   padding: 40px 20px;
 }
 
+.back-btn {
+  margin-bottom: 16px;
+  font-size: 15px;
+}
+
 .search-header {
   text-align: center;
-  margin-bottom: 36px;
+  margin-bottom: 24px;
 }
 
 .search-input {
@@ -95,10 +102,24 @@ const handlePageChange = (p: number) => { page.value = p; search() }
   width: 100%;
 }
 
+.result-stat {
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin: 0 0 20px;
+}
+
 .book-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 16px;
+}
+
+.book-card {
+  padding: 16px;
+  cursor: pointer;
+  border-radius: 16px;
+  overflow: hidden;
+  min-width: 0;
 }
 
 .book-card-title {
@@ -132,12 +153,16 @@ const handlePageChange = (p: number) => { page.value = p; search() }
   }
 
   .search-header {
-    margin-bottom: 24px;
+    margin-bottom: 16px;
   }
 
   .book-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 10px;
+  }
+
+  .book-card {
+    padding: 12px;
   }
 
   .book-card-title {
@@ -152,8 +177,22 @@ const handlePageChange = (p: number) => { page.value = p; search() }
 
 @media (max-width: 480px) {
   .book-grid {
-    grid-template-columns: 1fr;
-    gap: 10px;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .book-card {
+    padding: 10px;
+  }
+
+  .book-card-title {
+    font-size: 13px;
+    margin-bottom: 4px;
+  }
+
+  .book-card-author {
+    font-size: 12px;
+    margin-bottom: 6px;
   }
 }
 </style>
