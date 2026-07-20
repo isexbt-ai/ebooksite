@@ -5,10 +5,11 @@ import { useAuthStore } from '@/stores/auth'
 import { api } from '@/api/client'
 import type { Book, Settings } from '@/api/types'
 import { formatSize } from '@/utils/format'
-import { NButton, NInput, NSpace, NTag, NSkeleton, NDrawer, NDrawerContent, NDivider } from 'naive-ui'
+import { NButton, NInput, NSpace, NTag, NSkeleton, NDrawer, NDrawerContent, NDivider, useMessage } from 'naive-ui'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const message = useMessage()
 const searchQuery = ref('')
 const hotBooks = ref<Book[]>([])
 const settings = ref<Settings>({})
@@ -43,6 +44,8 @@ const handleSearch = () => {
 const handleBuyCard = () => {
   if (settings.value.buy_link) {
     window.open(settings.value.buy_link, '_blank')
+  } else {
+    message.info('暂未配置购买链接，请联系管理员')
   }
 }
 </script>
@@ -59,8 +62,8 @@ const handleBuyCard = () => {
 
         <!-- 桌面端按钮 -->
         <div class="nav-desktop">
-          <n-button size="small" @click="router.push('/feedback')">💬 反馈</n-button>
-          <n-button v-if="settings.buy_link" size="small" type="primary" @click="handleBuyCard">🛒 购买卡密</n-button>
+          <n-button size="small" @click="router.push('/feedback')">📝 提交反馈</n-button>
+          <n-button size="small" type="primary" @click="handleBuyCard">🛒 购买卡密</n-button>
           <template v-if="!authStore.isLoggedIn">
             <n-button size="small" type="primary" @click="router.push('/login')">登录</n-button>
             <n-button size="small" @click="router.push('/register')">注册</n-button>
@@ -84,8 +87,8 @@ const handleBuyCard = () => {
     <n-drawer v-model:show="showMobileMenu" placement="right" :width="280">
       <n-drawer-content title="菜单" :closable="true">
         <div class="mobile-menu-items">
-          <n-button block @click="router.push('/feedback'); showMobileMenu = false">💬 意见反馈</n-button>
-          <n-button v-if="settings.buy_link" block type="primary" @click="handleBuyCard(); showMobileMenu = false">🛒 购买卡密</n-button>
+          <n-button block @click="router.push('/feedback'); showMobileMenu = false">📝 提交反馈</n-button>
+          <n-button block type="primary" @click="handleBuyCard(); showMobileMenu = false">🛒 购买卡密</n-button>
           <n-divider style="margin: 8px 0;" />
           <template v-if="!authStore.isLoggedIn">
             <n-button block type="primary" @click="router.push('/login'); showMobileMenu = false">登录</n-button>
